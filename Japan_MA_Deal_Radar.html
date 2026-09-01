@@ -531,7 +531,29 @@ function nav(){
       (c!==''?'<span class="cnt num">'+c+'</span>':'')+'</a>';
   }).join('');
 }
-function go(v){VIEW=v;CUR=null;render();}
+function stateKey(){return VIEW+(VIEW==='deal'&&CUR!=null?':'+CUR:'')+(VIEW==='intake'?':'+IMODE:'');}
+function pushView(replace){
+  var st={v:VIEW,c:CUR,m:IMODE};
+  var h='#'+stateKey();
+  try{ history[replace?'replaceState':'pushState'](st,'',h); }catch(e){}
+}
+function go(v,noPush){VIEW=v;CUR=null;render();if(!noPush)pushView();}
+function applyState(st){
+  if(!st)return false;
+  VIEW=st.v||'intake'; CUR=(st.c==null?null:st.c); if(st.m)IMODE=st.m;
+  if(VIEW==='deal'&&!S.deals.some(function(d){return d.id===CUR;}))VIEW='list';
+  render(); return true;
+}
+window.addEventListener('popstate',function(e){
+  if(!applyState(e.state)){
+    var h=(location.hash||'').replace(/^#/,'').split(':');
+    VIEW=h[0]||'intake'; CUR=null;
+    if(VIEW==='deal'&&h[1])CUR=Number(h[1]);
+    if(VIEW==='intake'&&h[1])IMODE=h[1];
+    if(!({intake:1,pipe:1,list:1,sector:1,stats:1,deal:1})[VIEW])VIEW='intake';
+    render();
+  }
+});
 function render(){
   _SC={};
   try{
@@ -601,7 +623,7 @@ function vRoute(){
 }
 var IMODE='single', BULK=[];
 function vIntake(){
-  var tab=function(k,l){return '<button class="'+(IMODE===k?'primary':'ghost')+'" onclick="IMODE=\''+k+'\';render()">'+l+'</button>';};
+  var tab=function(k,l){return '<button class="'+(IMODE===k?'primary':'ghost')+'" onclick="IMODE=\''+k+'\';render();pushView()">'+l+'</button>';};
   var h='<div class="head"><div><h2>안건 입력</h2>'+
    '<p>플랫폼의 검색 결과 목록을 통째로 복사해 붙여넣으면 여러 건을 한 번에 등록합니다. 매출·이익·희망가·지역·양도형태를 자동으로 뽑아내고, 이미 등록된 안건은 중복으로 표시합니다.</p></div>'+
    '<div class="row">'+tab('single','한 건씩')+tab('bulk','목록 일괄')+tab('route','수집 루트')+tab('help','가져오는 법')+'</div></div>';
@@ -832,7 +854,7 @@ function vList(){
 function sortBy(k){if(SORT.k===k)SORT.d=-SORT.d;else{SORT.k=k;SORT.d=-1;}render();}
 
 /* 딜 상세 */
-function openDeal(id){CUR=id;VIEW='deal';render();}
+function openDeal(id){CUR=id;VIEW='deal';render();pushView();}
 function vDeal(){
   var d=S.deals.filter(function(x){return x.id===CUR;})[0];
   if(!d)return '<div class="empty">딜을 찾을 수 없습니다.</div>';
@@ -1171,7 +1193,14 @@ function mergeDeals(list,srcLabel){
   go('list');
 }
 
+(function(){
+  var h=(location.hash||'').replace(/^#/,'').split(':');
+  if(h[0]&&({intake:1,pipe:1,list:1,sector:1,stats:1})[h[0]]){
+    VIEW=h[0]; if(VIEW==='intake'&&h[1])IMODE=h[1];
+  }
+})();
 render();
+pushView(true);
 autoSync();
 </script>
 </body>

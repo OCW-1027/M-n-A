@@ -52,6 +52,16 @@ SITES = {
         "base": "https://www.strike.co.jp",
         "single": True,   # 한 페이지에 전 건이 실림
     },
+    "batonz": {
+        "label": "BATONZ",
+        "url": "https://batonz.jp/sell_cases/?sort=new&page={p}",
+        "base": "https://batonz.jp",
+    },
+    "tranbi": {
+        "label": "TRANBI",
+        "url": "https://www.tranbi.com/buy/list/?page={p}",
+        "base": "https://www.tranbi.com",
+    },
 }
 
 REGIONS = ["中部・北陸", "中国・四国", "九州・沖縄", "甲信越", "北海道", "東北", "関東",
@@ -194,7 +204,23 @@ def blocks_strike(raw):
     return [strip_partial(x) for x in parts[1:]]
 
 
-SPLIT = {"ma-cp": blocks_macp, "nihon-ma": blocks_nihonma, "strike": blocks_strike}
+def blocks_batonz(raw):
+    """카드는 /sell_cases/{id} 앵커로 시작한다."""
+    pos = [m.start() for m in re.finditer(r'href="/sell_cases/\d+"', raw)]
+    out = []
+    for i, st in enumerate(pos):
+        en = pos[i + 1] if i + 1 < len(pos) else min(len(raw), st + 4000)
+        out.append(raw[st:en])
+    return out
+
+
+def blocks_tranbi(raw):
+    parts = re.split(r'<[^>]*class="buyListCard"', raw)
+    return [strip_partial(x) for x in parts[1:]]
+
+
+SPLIT = {"ma-cp": blocks_macp, "nihon-ma": blocks_nihonma, "strike": blocks_strike,
+         "batonz": blocks_batonz, "tranbi": blocks_tranbi}
 
 
 def industry_of(t):
@@ -209,7 +235,9 @@ def title_of(t, site):
     skip = re.compile(r"^(お問い合わせ|詳細|続き|検索|一覧|もっと|NEW|新着|会員|ログイン|前へ|次へ|"
                       r"お気に入り|無料|相談|閲覧|交渉|公開日|更新日|案件No|所在地|スキーム|営業利益|"
                       r"従業員|概算売上|売上高|希望金額|純資産|譲渡理由|業種|財務内容|事業内容|"
-                      r"ブックマーク|地域|規模|エリア|株式譲渡|事業譲渡|非公開|応相談|PL項目|BS項目)")
+                      r"ブックマーク|地域|規模|エリア|株式譲渡|事業譲渡|非公開|応相談|PL項目|BS項目|"
+                      r"譲渡希望額|売却希望価格|会社譲渡|経営資源譲渡|専門家|お気に入り|気になる|興味ない|"
+                      r"詳しく見る|値下げ|個人（|NEW|公開|更新)")
     cands = []
     for l in lines:
         l = re.sub(r"^[\s・|#*>◎■●\-]+", "", l)
@@ -227,10 +255,14 @@ def title_of(t, site):
         if re.search(r"[：:]\s*[▲△約]?\d", l):
             continue
         cands.append(l)
-        if len(cands) >= 3:
+        if len(cands) >= (8 if site in ("batonz", "tranbi") else 3):
             break
+    cands = [c for c in cands if c not in PREFS and c not in REGIONS]
     if not cands:
         return "무제"
+    if site in ("batonz", "tranbi"):
+        # 이 두 곳은 카드에 긴 설명형 제목이 그대로 들어 있다
+        return max(cands, key=len)[:70]
     # 첫 줄은 업종 대분류인 경우가 많아, 두 번째 줄이 더 구체적인 사업명
     return (cands[1] if len(cands) > 1 and len(cands[0]) < 30 else cands[0])[:70]
 
@@ -256,6 +288,15 @@ def parse_block(rawhtml, site, cfg):
         m = re.search(r'class="ankenid"[^>]*>\s*([^<]+)', rawhtml)
         if m:
             no = m.group(1).strip()
+    if site == "batonz":
+        m2 = re.search(r'href="/sell_cases/(\d+)"', rawhtml)
+        if m2:
+            no = m2.group(1)
+            url = cfg["base"] + "/sell_cases/" + no
+    if site == "tranbi" and not no:
+        m2 = re.search(r"公開日[：:\s]*([\d-]+)", t)
+        no = "TB-" + (m2.group(1) if m2 else "") + "-" + str(abs(hash(t)) % 100000)
+        url = cfg["base"] + "/buy/list/"
     if no and site == "ma-cp":
         url = cfg["base"] + "/deal/" + no + "/"
     elif no and site == "strike":
@@ -271,7 +312,7 @@ def parse_block(rawhtml, site, cfg):
     d["rev"] = yen(grab(t, ["概算売上", "売上高", "年商", "売上"], hint) or "", hint)
     d["op"] = yen(grab(t, ["調整後営業利益", "修正後営業利益", "営業利益"], hint) or "", hint)
     d["ebitda"] = yen(grab(t, ["調整後EBITDA", "修正後EBITDA", "調整後EVITDA", "EBITDA"], hint) or "", hint)
-    d["ask"] = yen(grab(t, ["譲渡希望価格", "希望譲渡価格", "希望金額", "譲渡価格", "希望価格", "譲渡対価"], hint) or "", hint)
+    d["ask"] = yen(grab(t, ["譲渡希望額", "譲渡希望価格", "売却希望価格", "希望譲渡価格", "希望金額", "譲渡価格", "希望価格", "譲渡対価"], hint) or "", hint)
     d["cash"] = yen(grab(t, ["現金及び現金同等物", "現金・現金同等物", "現金・預金等", "現金同等物", "現預金"], hint) or "", hint)
     d["debt"] = yen(grab(t, ["ネット有利子負債", "有利子負債等", "有利子負債", "借入金"], hint) or "", hint)
     d["netAssets"] = yen(grab(t, ["調整後純資産", "修正後時価純資産", "想定時価純資産", "簿価純資産", "時価純資産", "純資産"], hint) or "", hint)
@@ -354,7 +395,7 @@ def sanity(d):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--sites", default="ma-cp,nihon-ma,strike")
+    ap.add_argument("--sites", default="ma-cp,nihon-ma,strike,batonz,tranbi")
     ap.add_argument("--pages", type=int, default=3, help="사이트당 수집 페이지 수")
     ap.add_argument("--min-profit", type=int, default=0, help="최소 영업이익/EBITDA (만엔)")
     ap.add_argument("--min-rev", type=int, default=0, help="최소 매출 (만엔)")
