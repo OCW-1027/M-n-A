@@ -237,6 +237,8 @@ def main():
     ap.add_argument("--industries", default="", help="쉼표 구분 업종 필터")
     ap.add_argument("--all", action="store_true", help="조건 없이 전부")
     ap.add_argument("--seen", default="seen.json", help="이미 본 안건 ID 기록 파일")
+    ap.add_argument("--full", action="store_true",
+                    help="이미 본 안건도 포함한 전체 스냅샷을 출력")
     ap.add_argument("--out", default="", help="출력 파일명")
     a = ap.parse_args()
 
@@ -246,7 +248,7 @@ def main():
     print("내려받음: %d건" % len(rows))
 
     seen = set()
-    if os.path.exists(a.seen):
+    if not a.full and os.path.exists(a.seen):
         try:
             seen = set(json.load(open(a.seen, encoding="utf-8")))
         except Exception:

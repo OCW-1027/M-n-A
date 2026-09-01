@@ -401,11 +401,13 @@ def main():
     ap.add_argument("--min-rev", type=int, default=0, help="최소 매출 (만엔)")
     ap.add_argument("--max-ask", type=int, default=0, help="최대 희망가 (만엔, 0=제한없음)")
     ap.add_argument("--seen", default="seen_platforms.json")
+    ap.add_argument("--full", action="store_true",
+                    help="이미 본 안건도 포함한 전체 스냅샷을 출력 (도구가 중복을 걸러냄)")
     ap.add_argument("--out", default="")
     a = ap.parse_args()
 
     seen = set()
-    if os.path.exists(a.seen):
+    if not a.full and os.path.exists(a.seen):
         try:
             seen = set(json.load(open(a.seen, encoding="utf-8")))
         except Exception:
