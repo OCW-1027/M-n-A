@@ -22,11 +22,11 @@ jobs:
         run: mkdir -p data
 
       - name: JFC 공개 데이터 수집
-        run: python3 collect_jfc.py --min-rev 5000 --min-profit 300 --out data/latest_jfc.json
+        run: python3 collect_jfc.py --full --min-rev 5000 --min-profit 300 --out data/latest_jfc.json
         continue-on-error: true
 
       - name: 중개사 공개 안건 수집
-        run: python3 collect_platforms.py --pages 3 --min-rev 0 --out data/latest_platforms.json
+        run: python3 collect_platforms.py --full --pages 3 --min-rev 0 --out data/latest_platforms.json
         continue-on-error: true
 
       - name: 수집 결과 확인
