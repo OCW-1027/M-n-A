@@ -19,27 +19,22 @@ jobs:
           python-version: '3.12'
 
       - name: JFC 공개 데이터 수집
-        run: python3 collect_jfc.py --min-rev 5000 --min-profit 300
+        run: python3 collect_jfc.py --min-rev 5000 --min-profit 300 --out data/latest_jfc.json
         continue-on-error: true
 
       - name: 중개사 공개 안건 수집
-        run: python3 collect_platforms.py --pages 3 --min-profit 1000
+        run: python3 collect_platforms.py --pages 3 --min-rev 10000 --out data/latest_platforms.json
         continue-on-error: true
 
-      - name: 결과 업로드
-        uses: actions/upload-artifact@v4
-        with:
-          name: deals-${{ github.run_number }}
-          path: |
-            jfc_import_*.json
-            platforms_import_*.json
-          retention-days: 30
-          if-no-files-found: warn
+      - name: 수집 시각 기록
+        run: |
+          mkdir -p data
+          date -u +'{"collected":"%Y-%m-%dT%H:%M:%SZ"}' > data/status.json
 
-      - name: 수집 기록 갱신
+      - name: 저장소에 반영
         run: |
           git config user.name  "deal-radar"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add seen.json seen_platforms.json 2>/dev/null || true
-          git diff --staged --quiet || git commit -m "수집 기록 갱신 $(date +%Y-%m-%d)"
+          git add -f data/ seen.json seen_platforms.json
+          git diff --staged --quiet || git commit -m "안건 수집 $(date +%Y-%m-%d)"
           git push
