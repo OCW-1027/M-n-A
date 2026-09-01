@@ -314,6 +314,16 @@ def parse_block(rawhtml, site, cfg):
 
     d["name"] = title_of(t, site)
     d["industry"] = industry_of(t)
+    if re.match(r"^(No\.?\d+|SS\d+|B-\d+)$", d["name"]):
+        m = re.search(r"(業種|業態)[：:\s]*([^\n]{2,30})", t)
+        alt = m.group(2).strip() if m else (d["industry"] or "")
+        if alt:
+            d["name"] = alt + (" (" + d["name"] + ")")
+    # 희망가가 순현금보다 작게 읽힌 건은 배수를 신뢰할 수 없음
+    e = d["ebitda"] if d["ebitda"] is not None else d["op"]
+    if d["ask"] is not None and e and e > 0 and d["ask"] / e < 1.0:
+        if "수치 확인 필요" not in d["flags"]:
+            d["flags"].append("수치 확인 필요")
     d["raw"] = t[:1600]
 
     sanity(d)

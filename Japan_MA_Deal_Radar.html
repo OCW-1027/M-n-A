@@ -124,7 +124,8 @@ td.r,th.r{text-align:right}
     <div class="brand"><h1>Deal Radar</h1><p>일본 M&amp;A 안건 검토</p></div>
     <div class="nav" id="nav"></div>
     <div class="railfoot">
-      <button class="primary" onclick="exportJSON()">백업 내보내기</button>
+      <button class="primary" id="syncbtn" onclick="syncNow(false)">새 안건 확인</button>
+      <button onclick="exportJSON()">백업 내보내기</button>
       <button onclick="document.getElementById('imp').click()">파일 불러오기 (백업·수집)</button>
       <input type="file" id="imp" accept=".json" style="display:none" onchange="importJSON(this)">
       <input type="file" id="mrg" accept=".json" style="display:none" onchange="importJSON(this)">
@@ -1076,6 +1077,48 @@ function mergeJSON(el){
   };
   r.readAsText(f);
 }
+
+/* ─── 서버에서 새 안건 자동 수신 (같은 도메인이라 CORS 문제 없음) ─── */
+var FEEDS=['data/latest_platforms.json','data/latest_jfc.json'];
+function syncNow(silent){
+  var btn=document.getElementById('syncbtn');
+  if(btn){btn.disabled=true;btn.textContent='확인 중…';}
+  var added=0, skipped=0, newsec=0, done=0, stamp='';
+  var have={},haveName={};
+  S.deals.forEach(function(d){ if(d.listingId)have[d.source+':'+d.listingId]=1; haveName[d.name]=1; });
+  function finish(){
+    if(added||newsec)save();
+    if(btn){btn.disabled=false;btn.textContent='새 안건 확인';}
+    try{localStorage.setItem('ma_radar_lastsync',today());}catch(e){}
+    if(added){ toast('신규 '+added+'건을 받았습니다'); go('list'); }
+    else if(!silent){ toast('새 안건이 없습니다 (중복 '+skipped+'건 확인)'); render(); }
+    else render();
+  }
+  FEEDS.forEach(function(f){
+    fetch(f+'?t='+Date.now()).then(function(r){return r.ok?r.json():null;}).then(function(o){
+      if(o&&Array.isArray(o.deals)){
+        if(o.collected&&o.collected>stamp)stamp=o.collected;
+        o.deals.forEach(function(x){
+          var key=(x.source||'')+':'+(x.listingId||'');
+          if((x.listingId&&have[key])||haveName[x.name]){skipped++;return;}
+          var d={}; for(var k in x){ if(k.charAt(0)!=='_')d[k]=x[k]; }
+          d.id=++S.seq; d.status='신규'; d.created=today(); d.checks={};
+          d.flags=d.flags||[]; d.hold=d.hold||5;
+          d.logs=[{t:today(),m:(d.source||'수집')+' 자동 수신'}];
+          if(d.industry&&!S.sectors[d.industry]){S.sectors[d.industry]={listed:'',band:'',lic:'',people:'',hidden:'',q:[]};newsec++;}
+          S.deals.push(d); added++;
+          if(d.listingId)have[key]=1; haveName[d.name]=1;
+        });
+      }
+    }).catch(function(){}).then(function(){ if(++done===FEEDS.length)finish(); });
+  });
+}
+function autoSync(){
+  var last=null; try{last=localStorage.getItem('ma_radar_lastsync');}catch(e){}
+  if(last===today())return;
+  if(location.protocol==='file:')return;   /* 로컬 파일로 열었을 땐 건너뜀 */
+  syncNow(true);
+}
 function exportJSON(){
   var b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
   var a=document.createElement('a');a.href=URL.createObjectURL(b);
@@ -1123,6 +1166,7 @@ function mergeDeals(list,srcLabel){
 }
 
 render();
+autoSync();
 </script>
 </body>
 </html>

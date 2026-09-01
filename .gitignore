@@ -3,9 +3,6 @@ ma_radar_*.json
 deal_radar_*.json
 backup*.json
 
-# 수집 결과 — Actions Artifacts로만 받습니다
-jfc_import_*.json
-
 # 작업 파일
 *.csv
 *.xlsx
@@ -15,3 +12,7 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# 수집 결과는 data/ 안에서만 관리 (도구가 직접 읽음)
+/jfc_import_*.json
+/platforms_import_*.json
