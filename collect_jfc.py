@@ -186,8 +186,8 @@ def convert(row):
         "_deficit": (row.get("経常利益") or "").strip() == "赤字",
     }
     if na_raw == "債務超過":
-        d["flags"].append("결산 미공개")
-        d["netAssets"] = -1
+        d["flags"].append("채무초과")
+        d["netAssets"] = None
     if d["_deficit"]:
         d["flags"].append("2년 연속 적자")
     body = "\n".join(filter(None, [
@@ -274,7 +274,7 @@ def main():
     json.dump(sorted(seen | {d["listingId"] for d in out}),
               open(a.seen, "w", encoding="utf-8"), ensure_ascii=False)
     print("\n저장: %s  (%d건)" % (fn, len(out)))
-    print("Deal Radar에서 [수집 파일 병합]으로 불러오십시오.")
+    print("Deal Radar 좌측 [파일 불러오기]로 넣으십시오.")
 
 
 if __name__ == "__main__":

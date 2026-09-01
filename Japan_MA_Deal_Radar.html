@@ -124,12 +124,12 @@ td.r,th.r{text-align:right}
     <div class="brand"><h1>Deal Radar</h1><p>일본 M&amp;A 안건 검토</p></div>
     <div class="nav" id="nav"></div>
     <div class="railfoot">
-      <button onclick="exportJSON()">백업 내보내기</button>
-      <button onclick="document.getElementById('imp').click()">백업 불러오기</button>
-      <button onclick="document.getElementById('mrg').click()">수집 파일 병합</button>
+      <button class="primary" onclick="exportJSON()">백업 내보내기</button>
+      <button onclick="document.getElementById('imp').click()">파일 불러오기 (백업·수집)</button>
       <input type="file" id="imp" accept=".json" style="display:none" onchange="importJSON(this)">
-      <input type="file" id="mrg" accept=".json" style="display:none" onchange="mergeJSON(this)">
-      <p style="font-size:11px;color:var(--ink-3);margin:2px 0 0">이 파일은 로컬에서만 동작합니다. 데이터는 외부로 나가지 않습니다.</p>
+      <input type="file" id="mrg" accept=".json" style="display:none" onchange="importJSON(this)">
+      <button class="ghost danger" onclick="hardReset()" style="font-size:11.5px">데이터 초기화</button>
+      <p style="font-size:11px;color:var(--ink-3);margin:2px 0 0">데이터는 이 브라우저에만 저장됩니다. 외부로 나가지 않습니다. 작업 후 백업을 내보내 두십시오.</p>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -138,8 +138,38 @@ td.r,th.r{text-align:right}
 <script>
 /* ─────────── 저장 ─────────── */
 var MEM=null;
+function normalize(o){
+  /* 어떤 형태의 데이터가 들어와도 화면이 죽지 않도록 상태를 정상화한다 */
+  var base=seed();
+  if(!o||typeof o!=='object')return base;
+  var out={};
+  out.deals=Array.isArray(o.deals)?o.deals:[];
+  out.sectors=(o.sectors&&typeof o.sectors==='object')?o.sectors:base.sectors;
+  /* 수집 파일(kind:deal_radar_import)이 통째로 저장된 경우: 시드 상태에 안건만 합쳐 복구 */
+  if(o.kind==='deal_radar_import'){
+    var have={};base.deals.forEach(function(d){have[d.name]=1;});
+    out.deals=base.deals.slice();
+    o.deals.forEach(function(x){ if(have[x.name])return; var d={};for(var k in x){if(k.charAt(0)!=='_')d[k]=x[k];} out.deals.push(d); });
+    out.sectors=base.sectors;
+  }
+  var mx=0;
+  out.deals.forEach(function(d,i){
+    if(d.id==null||typeof d.id!=='number')d.id=1000+i;
+    if(d.id>mx)mx=d.id;
+    d.status=d.status||'신규'; d.flags=d.flags||[]; d.checks=d.checks||{}; d.logs=d.logs||[];
+    d.hold=d.hold||5; d.created=d.created||today();
+    if(d.industry&&!out.sectors[d.industry])out.sectors[d.industry]={listed:'',band:'',lic:'',people:'',hidden:'',q:[]};
+  });
+  out.seq=Math.max(typeof o.seq==='number'?o.seq:0,mx);
+  return out;
+}
 function load(){
-  try{var r=localStorage.getItem('ma_radar_v1');if(r)return JSON.parse(r);}catch(e){}
+  var raw=null;
+  try{raw=localStorage.getItem('ma_radar_v1');}catch(e){}
+  if(raw){
+    try{return normalize(JSON.parse(raw));}
+    catch(e){ try{localStorage.setItem('ma_radar_v1_broken_'+Date.now(),raw);}catch(e2){} }
+  }
   return MEM||seed();
 }
 function save(){
@@ -267,12 +297,18 @@ function impliedEV(x){var nc=netCash(x);if(x.ask==null||nc==null)return null;ret
 function track(x){if(x.ask==null)return '미정';return x.ask>=10000?'메인':'볼트온';}
 
 var KILL=['反社·미납','허가 승계 불가','2년 연속 적자'];
-var WARN=['고객집중','오너의존 극심','1엔 매각','결산 미공개'];
+var WARN=['고객집중','오너의존 극심','1엔 매각','결산 미공개','채무초과'];
 function hasKill(x){return (x.flags||[]).some(function(f){return KILL.indexOf(f)>=0;});}
 function hasWarn(x){return (x.flags||[]).some(function(f){return WARN.indexOf(f)>=0;});}
 
 /* ─────────── 스코어 ─────────── */
+var _SC={};
 function score(x){
+  var key=x.id!=null?x.id+'|'+(x.ask||'')+'|'+(x.op||'')+'|'+(x.ebitda||'')+'|'+(x.cash||'')+'|'+(x.debt||'')+'|'+(x.netAssets||'')+'|'+(x.ownerDep||'')+'|'+(x.exitPath||'')+'|'+(x.explain||'')+'|'+(x.cap||'')+'|'+((x.flags||[]).join(',')):null;
+  if(key&&_SC[key])return _SC[key];
+  var r=_score(x); if(key)_SC[key]=r; return r;
+}
+function _score(x){
   var it=[],earned=0,avail=0;
   function add(lab,w,got,note){
     if(got==null){it.push({lab:lab,w:w,got:null,note:note||'미입력'});return;}
@@ -290,7 +326,8 @@ function score(x){
 
   var bs=null,bn='';
   var nc=netCash(x);
-  if(nc!=null||x.netAssets!=null){
+  if((x.flags||[]).indexOf('채무초과')>=0){bs=2;bn='채무초과';}
+  else if(nc!=null||x.netAssets!=null){
     if(nc!=null&&nc>0&&(x.netAssets==null||x.netAssets>0)){bs=15;bn='순현금';}
     else if(x.netAssets!=null&&x.netAssets>0){bs=10;bn='순자산 플러스';}
     else{bs=3;bn='차입 우위';}
@@ -424,7 +461,27 @@ function nav(){
   }).join('');
 }
 function go(v){VIEW=v;CUR=null;render();}
-function render(){nav();document.getElementById('main').innerHTML=({intake:vIntake,pipe:vPipe,list:vList,sector:vSector,stats:vStats,deal:vDeal})[VIEW]();window.scrollTo(0,0);}
+function render(){
+  _SC={};
+  try{
+    nav();
+    document.getElementById('main').innerHTML=({intake:vIntake,pipe:vPipe,list:vList,sector:vSector,stats:vStats,deal:vDeal})[VIEW]();
+    window.scrollTo(0,0);
+  }catch(e){
+    document.getElementById('main').innerHTML='<div class="head"><div><h2>화면을 그리는 중 문제가 생겼습니다</h2>'+
+     '<p>저장된 데이터가 손상된 것 같습니다. 아래 버튼으로 복구하면 안건은 유지하고 구조만 다시 맞춥니다.</p></div></div>'+
+     '<div class="panel"><div class="note" style="border-left-color:var(--rose)">'+esc(e&&e.message?e.message:String(e))+'</div>'+
+     '<div class="row" style="margin-top:14px"><button class="primary" onclick="repair()">구조 복구 (안건 유지)</button>'+
+     '<button onclick="exportJSON()">현재 데이터 내보내기</button>'+
+     '<button class="danger" onclick="hardReset()">전부 지우고 초기화</button></div></div>';
+  }
+}
+function repair(){S=normalize(S);save();VIEW='pipe';CUR=null;render();toast('복구했습니다');}
+function hardReset(){
+  if(!confirm('모든 안건과 업종 모듈을 지우고 처음 상태로 돌립니다. 백업을 먼저 내보내셨습니까?'))return;
+  try{localStorage.removeItem('ma_radar_v1');}catch(e){}
+  MEM=null;S=seed();save();VIEW='pipe';CUR=null;render();toast('초기화했습니다');
+}
 function toast(m){var d=document.createElement('div');d.className='toast';d.textContent=m;document.body.appendChild(d);setTimeout(function(){d.remove();},2200);}
 
 /* 안건 입력 */
@@ -468,9 +525,9 @@ function vRoute(){
     h+='</div>';
   });
   h+='<div class="sect">자동 수집 스크립트</div><div class="panel">'+
-   '<p style="font-size:12.5px;color:var(--ink-2);max-width:78ch;margin-top:0">함께 드린 <span class="num">collect_jfc.py</span>를 실행하면 JFC 공개 데이터를 받아 조건에 맞는 안건만 JSON으로 만들어 줍니다. 아래 [수집 파일 병합]으로 불러오면 이미 등록된 안건은 자동으로 건너뜁니다.</p>'+
+   '<p style="font-size:12.5px;color:var(--ink-2);max-width:78ch;margin-top:0">함께 드린 <span class="num">collect_jfc.py</span>를 실행하면 JFC 공개 데이터를 받아 조건에 맞는 안건만 JSON으로 만들어 줍니다. 좌측 [파일 불러오기]로 넣으면 이미 등록된 안건은 자동으로 건너뜁니다.</p>'+
    '<div style="background:var(--navy-900);border:1px solid var(--line);border-radius:6px;padding:12px;font-family:ui-monospace,monospace;font-size:12px;color:var(--ink-2);white-space:pre-wrap">python3 collect_jfc.py --min-rev 5000 --min-profit 300\npython3 collect_jfc.py --min-rev 10000 --industries 建設業,食品製造\npython3 collect_jfc.py --all        # 조건 없이 전부</div>'+
-   '<div class="row" style="margin-top:12px"><button class="primary" onclick="document.getElementById(\'mrg\').click()">수집 파일 병합</button></div></div>';
+   '<div class="row" style="margin-top:12px"><button class="primary" onclick="document.getElementById(\'imp\').click()">수집 파일 불러오기</button></div></div>';
   return h;
 }
 
@@ -656,6 +713,7 @@ function vPipe(){
     var ds=S.deals.filter(function(d){return d.status===st;});
     ds.sort(function(a,b){return score(b).pct-score(a).pct;});
     h+='<div class="col"><h3>'+st+'<span class="num">'+ds.length+'</span></h3>';
+    var more=ds.length>30?ds.length-30:0; if(more)ds=ds.slice(0,30);
     h+=ds.map(function(d){
       var s=score(d),g=grade(s.pct,s.fill),r=askOP(d);
       var cls=hasKill(d)?'kill':hasWarn(d)?'warn':(g.g==='A'?'good':'');
@@ -664,6 +722,7 @@ function vPipe(){
         '<div class="mt"><span>'+(r?'<span class="num">'+fmtP(r,1)+'</span>':'가격 미정')+'</span>'+
         '<span class="num" style="color:var(--cyan)">'+(s.fill<50?'—':s.pct)+'</span></div></div>';
     }).join('')||'<div style="font-size:11.5px;color:var(--ink-3);padding:8px 0">없음</div>';
+    if(more)h+='<div style="font-size:11.5px;color:var(--ink-3);padding:6px 0;text-align:center;cursor:pointer" onclick="go(\'list\')">점수 상위 30건만 표시 · 외 '+more+'건은 딜 목록에서</div>';
     h+='</div>';
   });
   return h+'</div>';
@@ -942,13 +1001,40 @@ function importJSON(el){
   var f=el.files[0];if(!f)return;
   var r=new FileReader();
   r.onload=function(){
-    try{var o=JSON.parse(r.result);
-      if(!o.deals)throw 0;
-      if(!confirm('현재 데이터를 불러온 파일로 교체합니다. 진행할까요?'))return;
-      S=o;save();go('list');toast('불러왔습니다');
-    }catch(e){alert('이 파일은 읽을 수 없습니다. Deal Radar가 내보낸 JSON 파일인지 확인해 주세요.');}
+    var o;
+    try{o=JSON.parse(r.result);}catch(e){alert('JSON 파일을 읽을 수 없습니다.');el.value='';return;}
+    if(!o||!Array.isArray(o.deals)){alert('안건이 들어 있지 않은 파일입니다.');el.value='';return;}
+    var isBackup = !!(o.sectors && typeof o.sectors==='object' && o.kind!=='deal_radar_import');
+    if(isBackup){
+      var replace=confirm('Deal Radar 백업 파일입니다 (안건 '+o.deals.length+'건).\n\n[확인] = 현재 데이터를 이 백업으로 교체\n[취소] = 현재 데이터에 이 백업의 안건을 추가(병합)');
+      if(replace){S=normalize(o);save();go('list');toast('백업으로 교체했습니다');el.value='';return;}
+    }
+    mergeDeals(o.deals, o.source||'파일');
+    el.value='';
   };
-  r.readAsText(f);el.value='';
+  r.readAsText(f);
+}
+function mergeJSON(el){importJSON(el);}
+function mergeDeals(list,srcLabel){
+  var have={},haveName={};
+  S.deals.forEach(function(d){ if(d.listingId)have[d.listingId]=1; haveName[d.name]=1; });
+  var add=0,skip=0,newsec=0;
+  list.forEach(function(x){
+    if((x.listingId&&have[x.listingId])||haveName[x.name]){skip++;return;}
+    var d={}; for(var k in x){ if(k.charAt(0)!=='_')d[k]=x[k]; }
+    d.id=++S.seq; d.status=d.status&&STATUS.indexOf(d.status)>=0?d.status:'신규'; d.created=d.created||today(); d.checks=d.checks||{};
+    d.flags=d.flags||[]; d.hold=d.hold||5;
+    d.logs=(d.logs&&d.logs.length)?d.logs:[{t:today(),m:srcLabel+'에서 불러와 등록'}];
+    if(d.industry&&!S.sectors[d.industry]){
+      S.sectors[d.industry]={listed:'',band:'',lic:'',people:'',hidden:'',q:[]}; newsec++;
+    }
+    S.deals.push(d); add++;
+    if(d.listingId)have[d.listingId]=1; haveName[d.name]=1;
+  });
+  save();
+  alert('신규 '+add+'건을 등록했습니다.\n중복으로 건너뛴 안건 '+skip+'건.'+
+    (newsec?'\n새 업종 모듈 '+newsec+'개가 만들어졌습니다 — 업종 라이브러리에서 채워주십시오.':''));
+  go('list');
 }
 
 render();
