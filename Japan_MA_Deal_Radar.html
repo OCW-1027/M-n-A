@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Japan M&amp;A Deal Radar</title>
+<style>
+:root{
+  --navy-900:#060E1C; --navy-800:#0A1628; --navy-700:#0F2036; --navy-600:#152B45;
+  --line:#1E3A57; --line-soft:#16293F;
+  --ink:#E6EDF5; --ink-2:#9DB2C9; --ink-3:#647D99;
+  --cyan:#00D9FF; --cyan-dim:#0B6F85;
+  --amber:#E9A23B; --rose:#E4636B; --mint:#3FCF9A; --violet:#9B8CFF;
+  --r:6px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--navy-900); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Noto Sans KR","Malgun Gothic",sans-serif;
+  font-size:14px; line-height:1.6; -webkit-font-smoothing:antialiased;
+}
+.num{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+a{color:var(--cyan)}
+button{font-family:inherit;font-size:13px;cursor:pointer;border-radius:var(--r);border:1px solid var(--line);background:var(--navy-700);color:var(--ink);padding:7px 13px}
+button:hover{border-color:var(--cyan-dim);background:var(--navy-600)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--cyan);outline-offset:1px}
+button.primary{background:var(--cyan);color:#04222B;border-color:var(--cyan);font-weight:600}
+button.primary:hover{background:#4EE6FF}
+button.ghost{background:transparent}
+button.danger{color:var(--rose);border-color:#4A2028}
+input,select,textarea{
+  font-family:inherit;font-size:13px;background:var(--navy-900);color:var(--ink);
+  border:1px solid var(--line);border-radius:var(--r);padding:7px 9px;width:100%
+}
+textarea{line-height:1.6;resize:vertical}
+label.f{display:block;font-size:11px;color:var(--ink-3);margin:0 0 4px}
+
+/* shell */
+.shell{display:flex;min-height:100vh}
+.rail{width:196px;flex:none;background:var(--navy-800);border-right:1px solid var(--line-soft);padding:18px 0;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{padding:0 18px 18px;border-bottom:1px solid var(--line-soft);margin-bottom:12px}
+.brand h1{margin:0;font-size:15px;font-weight:600;letter-spacing:.01em}
+.brand p{margin:3px 0 0;font-size:11px;color:var(--ink-3)}
+.nav a{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 18px;color:var(--ink-2);text-decoration:none;font-size:13px;border-left:2px solid transparent}
+.nav a:hover{color:var(--ink);background:var(--navy-700)}
+.nav a.on{color:var(--cyan);border-left-color:var(--cyan);background:var(--navy-700)}
+.nav .cnt{font-size:11px;color:var(--ink-3)}
+.railfoot{padding:14px 18px;margin-top:12px;border-top:1px solid var(--line-soft);display:flex;flex-direction:column;gap:7px}
+.main{flex:1;min-width:0;padding:26px 30px 70px}
+.head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.head h2{margin:0;font-size:20px;font-weight:600}
+.head p{margin:4px 0 0;color:var(--ink-3);font-size:12.5px;max-width:70ch}
+
+/* panels */
+.panel{background:var(--navy-800);border:1px solid var(--line-soft);border-radius:10px;padding:18px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media(max-width:1100px){.grid3,.grid4{grid-template-columns:repeat(2,1fr)}}
+.sect{margin:22px 0 10px;font-size:12px;color:var(--ink-3);letter-spacing:.04em}
+
+/* table */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-weight:500;font-size:11px;color:var(--ink-3);padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:var(--cyan)}
+td{padding:9px 10px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--navy-700)}
+td.r,th.r{text-align:right}
+
+/* badges */
+.b{display:inline-block;font-size:11px;padding:2px 7px;border-radius:20px;border:1px solid;white-space:nowrap;line-height:1.5}
+.b-cy{color:var(--cyan);border-color:#0E4A5A;background:#062730}
+.b-am{color:var(--amber);border-color:#4B3413;background:#2A1D08}
+.b-ro{color:var(--rose);border-color:#4A2028;background:#2B1114}
+.b-mi{color:var(--mint);border-color:#134634;background:#08281E}
+.b-vi{color:var(--violet);border-color:#332C63;background:#1A163A}
+.b-gy{color:var(--ink-2);border-color:var(--line);background:var(--navy-700)}
+
+/* score */
+.score{font-size:26px;font-weight:600;line-height:1}
+.bar{height:5px;background:var(--navy-600);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--cyan)}
+.brk{display:grid;grid-template-columns:1fr auto;gap:3px 10px;align-items:center;font-size:12px}
+.brk .lab{color:var(--ink-2)}
+.brk .val{color:var(--ink);font-size:12px}
+
+/* kanban */
+.kan{display:grid;grid-template-columns:repeat(7,minmax(160px,1fr));gap:10px;overflow-x:auto}
+.col{background:var(--navy-800);border:1px solid var(--line-soft);border-radius:8px;padding:10px;min-height:120px}
+.col h3{margin:0 0 9px;font-size:11.5px;font-weight:500;color:var(--ink-2);display:flex;justify-content:space-between}
+.card{background:var(--navy-700);border:1px solid var(--line);border-left:2px solid var(--line);border-radius:5px;padding:9px;margin-bottom:7px;cursor:pointer}
+.card:hover{border-color:var(--cyan-dim)}
+.card .nm{font-size:12.5px;margin-bottom:3px;line-height:1.35}
+.card .mt{font-size:11px;color:var(--ink-3);display:flex;justify-content:space-between;gap:6px}
+.kill{border-left-color:var(--rose)!important}
+.warn{border-left-color:var(--amber)!important}
+.good{border-left-color:var(--mint)!important}
+
+.kv{display:grid;grid-template-columns:112px 1fr;gap:5px 12px;font-size:13px}
+.kv dt{color:var(--ink-3);font-size:12px}
+.kv dd{margin:0}
+.chk{display:flex;gap:9px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--line-soft)}
+.chk input[type=checkbox]{width:15px;height:15px;flex:none;margin-top:3px;accent-color:var(--cyan)}
+.chk .q{flex:1;font-size:13px}
+.note{background:var(--navy-700);border-left:2px solid var(--cyan-dim);padding:10px 13px;border-radius:0 var(--r) var(--r) 0;font-size:12.5px;color:var(--ink-2)}
+.empty{color:var(--ink-3);font-size:13px;padding:34px 0;text-align:center}
+.row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.log{font-size:12px;color:var(--ink-2);padding:6px 0;border-bottom:1px solid var(--line-soft)}
+.log b{color:var(--ink-3);font-weight:400;font-size:11px}
+.stat .n{font-size:24px;font-weight:600}
+.stat .l{font-size:11.5px;color:var(--ink-3)}
+.hbar{display:flex;align-items:center;gap:9px;margin-bottom:6px;font-size:12px}
+.hbar .t{width:130px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hbar .g{flex:1;height:14px;background:var(--navy-700);border-radius:3px;overflow:hidden}
+.hbar .g i{display:block;height:100%;background:var(--cyan-dim)}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy-600);border:1px solid var(--cyan-dim);color:var(--ink);padding:10px 18px;border-radius:22px;font-size:13px;z-index:99}
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="rail">
+    <div class="brand"><h1>Deal Radar</h1><p>일본 M&amp;A 안건 검토</p></div>
+    <div class="nav" id="nav"></div>
+    <div class="railfoot">
+      <button onclick="exportJSON()">백업 내보내기</button>
+      <button onclick="document.getElementById('imp').click()">백업 불러오기</button>
+      <button onclick="document.getElementById('mrg').click()">수집 파일 병합</button>
+      <input type="file" id="imp" accept=".json" style="display:none" onchange="importJSON(this)">
+      <input type="file" id="mrg" accept=".json" style="display:none" onchange="mergeJSON(this)">
+      <p style="font-size:11px;color:var(--ink-3);margin:2px 0 0">이 파일은 로컬에서만 동작합니다. 데이터는 외부로 나가지 않습니다.</p>
+    </div>
+  </nav>
+  <main class="main" id="main"></main>
+</div>
+
+<script>
+/* ─────────── 저장 ─────────── */
+var MEM=null;
+function load(){
+  try{var r=localStorage.getItem('ma_radar_v1');if(r)return JSON.parse(r);}catch(e){}
+  return MEM||seed();
+}
+function save(){
+  MEM=S;
+  try{localStorage.setItem('ma_radar_v1',JSON.stringify(S));}catch(e){}
+}
+
+/* ─────────── 상수 ─────────── */
+var STATUS=['신규','WATCH','IM요청','NDA','DD','LOI','PASS'];
+var PREFS=['北海道','青森県','岩手県','宮城県','秋田県','山形県','福島県','茨城県','栃木県','群馬県','埼玉県','千葉県','東京都','神奈川県','新潟県','富山県','石川県','福井県','山梨県','長野県','岐阜県','静岡県','愛知県','三重県','滋賀県','京都府','大阪府','兵庫県','奈良県','和歌山県','鳥取県','島根県','岡山県','広島県','山口県','徳島県','香川県','愛媛県','高知県','福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県'];
+var SOURCES=['BATONZ','TRANBI','M&A総合研究所','M&Aサクシード','Strike SMART','JFC','relay','事業承継センター','직접 소싱','기타'];
+
+var COMMON_Q=[
+ '정상화 EBITDA 산출 근거 — 오너 급여·임차료·일회성 비용의 add-back 내역',
+ '최근 3기 결산서 및 계정명세서 (특히 가지급금·사장 대여금)',
+ '차입금 잔액·상환일정·경영자 보증 유무',
+ '고객별 매출 구성 (상위 5사 비중)',
+ '허가·면허·자격의 승계 가능 여부와 갱신 시기',
+ '사장 잔류 의사와 기간, 인계 계획',
+ '핵심 인력 명단과 근속·이탈 위험',
+ '세금·사회보험 납부 상태 (미납 여부)',
+ '簿外債務 — 미지급 잔업수당, 유급휴가 충당, 퇴직급여',
+ '소송·분쟁·클레임 이력',
+ '부동산 보유 여부와 평가액, 임차 계약 조건',
+ 'Exit 시나리오 — 동종 상장사 또는 업계 인수자 후보'
+];
+
+function seed(){
+ return {seq:9, deals:SEED_DEALS(), sectors:SEED_SECTORS()};
+}
+function SEED_SECTORS(){
+ return {
+  '建設業':{listed:'6.5x',band:'3~6x',lic:'建設業許可, 1級/2級 施工管理技士, 経営事項審査',
+    people:'現場責任者·施工管理技士 이탈이 곧 수주능력 상실',
+    hidden:'하자보수 충당, 미완성공사 손실, 공사보증, 선수금',
+    q:['수주잔고와 예정 원가율','공사별 채산 (적자 현장 유무)','하자보수 이력과 충당금','선수금·미성공사 잔액','건설업 허가 갱신 시기와 요건']},
+  '食品製造':{listed:'8.0x',band:'4~6x',lic:'食品衛生法 営業許可, HACCP 대응',
+    people:'제조 책임자, 배합·레시피 보유자',
+    hidden:'리콜 리스크, 재고 진부화, 설비 갱신 CAPEX',
+    q:['OEM vs 자체 브랜드 매출 비중','상위 SKU 의존도','EC·Amazon 채널 의존도','원료 조달처와 가격 연동 조항','기능성표시식품 신고 상태와 광고 규제 준수','설비 노후도와 향후 3년 CAPEX']},
+  'IT・システム開発':{listed:'9.5x',band:'4~7x',lic:'특정 없음 (파견 겸업 시 労働者派遣事業許可)',
+    people:'PM·아키텍트 이탈 시 프로젝트 붕괴',
+    hidden:'미완료 프로젝트 손실, 하자담보 책임, 미지급 잔업',
+    q:['SES vs 수탁개발 vs 자사 서비스 매출 비중','유지보수·ARR 계약 규모와 갱신률','엔지니어 이직률과 평균 단가','프로젝트별 채산 (적자 안건 유무)','재하청 구조와 偽装請負 리스크']},
+  '人材派遣・紹介':{listed:'7.0x',band:'3~5x',lic:'労働者派遣事業許可 (허가 승계 불가 — 재취득 필요), 有料職業紹介事業許可',
+    people:'등록 스태프 풀과 코디네이터',
+    hidden:'사회보험 미가입, 미지급 잔업, 유급휴가 충당, 同一労働同一賃金 대응',
+    q:['파견업 허가 형태와 갱신 시기 (주식양도 vs 사업양도에 따른 승계 가부)','거래처별 매출 집중도','파견 스태프 정착률·가동률','사회보험 가입 상태 (전수 확인)','파견 단가 인상 여지와 계약 갱신 주기','직접고용 전환 리스크']},
+  '教育':{listed:'11.0x',band:'3~6x',lic:'학원 형태에 따라 지자체 신고',
+    people:'간판 강사 의존도',
+    hidden:'선수 수업료(전수금), 환불 채무',
+    q:['수정 EBITDA의 add-back 항목 상세','특정 강사 의존도와 계약 형태','수강료 선수금 잔액과 환불 규정','신규 수강생 획득 비용(CAC)','커리큘럼의 대체 가능성','정부 보조금·조성금 의존도']},
+  'ロボットSIer・産業機械':{listed:'10.0x',band:'5~8x',lic:'특정 없음 (전기공사 겸업 시 電気工事業登録)',
+    people:'설계 엔지니어·제어 프로그래머가 자산의 본체',
+    hidden:'수주안건 원가 초과, 검수 지연, 보증 의무',
+    q:['설계·제어 엔지니어 인원과 연령 구성','반복 고객 비중과 유지보수 매출','수주잔고와 안건별 채산','특정 고객(대기업) 의존도','기술 문서·노하우의 문서화 수준','반도체·EV 등 전방 산업 사이클 노출']},
+  '電気工事業':{listed:'7.5x',band:'3~5x',lic:'建設業許可(電気工事), 電気工事業登録, 1級/2級 電気工事施工管理技士, 電気工事士',
+    people:'자격 보유자 이탈 = 허가 유지 불가. DD의 핵심',
+    hidden:'하자보수, 미완성공사, 안전사고 이력',
+    q:['자격 보유자 명단·연령·근속 (허가 요건 충족 여부)','전임 기술자 요건 유지 가능성','원청 구조와 거래처 집중도','수주잔고와 공사별 채산','안전사고·노동기준감독서 지도 이력']}
+ };
+}
+function SEED_DEALS(){
+ var d=[
+  {name:'중국지방 주문주택 건설회사',industry:'建設業',pref:'広島県',source:'M&A総合研究所',dealType:'株式譲渡',
+   rev:37500,op:5000,ebitda:5000,cash:20000,debt:0,netAssets:null,emp:null,ask:50000,
+   reason:'후계자 부재',ownerDep:'보통',exitPath:'업계 인수자 있음',explain:'상',cap:'B',
+   memo:'무차입·순현금 2억엔. 희망가 5억 − 순현금 2억 = 실질 EV 약 3억. 토지·건설보증·수주잔고 확인 필요.'},
+  {name:'서일본 발효식품·건강식품 제조',industry:'食品製造',pref:'福岡県',source:'M&A総合研究所',dealType:'株式譲渡',
+   rev:175000,op:17500,ebitda:null,cash:null,debt:null,netAssets:null,emp:null,ask:62500,
+   reason:'후계자 부재',ownerDep:'보통',exitPath:'상장 동종사 존재',explain:'상',cap:'C',
+   memo:'업력 40년+. 희망가/영업이익 약 3.6배. OEM 여부·SKU 의존도·기능성표시 규제 확인 필수.'},
+  {name:'도쿄 시스템개발·DX·웹제작',industry:'IT・システム開発',pref:'東京都',source:'M&A総合研究所',dealType:'株式譲渡',
+   rev:175000,op:null,ebitda:30000,cash:null,debt:null,netAssets:null,emp:null,ask:175000,
+   reason:'미확인',ownerDep:'보통',exitPath:'상장 동종사 존재',explain:'상',cap:'B',
+   memo:'규모·매수자 풀 측면에서 LP 자금에 가장 적합. SES 비중에 따라 배수 조정 필요.'},
+  {name:'치바 공항 인력파견·소개회사',industry:'人材派遣・紹介',pref:'千葉県',source:'BATONZ',dealType:'株式譲渡',
+   rev:40000,op:3300,ebitda:null,cash:null,debt:null,netAssets:null,emp:null,ask:10000,
+   reason:'미확인',ownerDep:'높음',exitPath:'불명',explain:'중',cap:'A',
+   flagConc:true,
+   memo:'항공 도메인 = 내 강점 영역. 파견업 허가 승계 가부가 딜의 성립 조건. 단독 Exit 경로 부재 → 볼트온·플랫폼 판단 필요.'},
+  {name:'교육 콘텐츠 기업',industry:'教育',pref:'東京都',source:'BATONZ',dealType:'株式譲渡',
+   rev:7500,op:null,ebitda:3400,cash:null,debt:null,netAssets:null,emp:null,ask:10000,
+   reason:'미확인',ownerDep:'높음',exitPath:'불명',explain:'중',cap:'B',
+   memo:'수정 EBITDA 3,400만엔의 add-back 내역 확인이 전부. 오너 급여 과다 환입 가능성.'},
+  {name:'AI 교육사업',industry:'教育',pref:'東京都',source:'BATONZ',dealType:'株式譲渡',
+   rev:15000,op:null,ebitda:4600,cash:null,debt:null,netAssets:null,emp:null,ask:30000,
+   reason:'미확인',ownerDep:'높음',exitPath:'불명',explain:'중',cap:'B',
+   memo:'약 6.5배. 싸지 않음. 강사 의존·광고비·AI 붐 지속성 리스크.'},
+  {name:'아이치 전기공사업체',industry:'電気工事業',pref:'愛知県',source:'M&Aサクシード',dealType:'株式譲渡',
+   rev:7500,op:null,ebitda:null,cash:null,debt:null,netAssets:null,emp:null,ask:1350,
+   reason:'후계자 부재',ownerDep:'높음',exitPath:'업계 인수자 있음',explain:'중',cap:'C',
+   memo:'체크사이즈 미달 → 볼트온 트랙. 유자격자 명단이 기업가치의 본체.'},
+  {name:'로봇 SIer (설계~유지보수 일괄)',industry:'ロボットSIer・産業機械',pref:'愛知県',source:'Strike SMART',dealType:'株式譲渡',
+   rev:30000,op:null,ebitda:null,cash:null,debt:null,netAssets:null,emp:null,ask:null,
+   reason:'기술승계',ownerDep:'보통',exitPath:'상장 동종사 존재',explain:'상',cap:'A',
+   memo:'가격 미공개. 무차입·장기 고객 기반. 반도체 장비 도메인 = 내 강점. 가격 확인 가치 있음.'}
+ ];
+ return d.map(function(x,i){
+   x.id=i+1; x.status='신규'; x.hold=5; x.created=today(); x.flags=x.flags||[];
+   if(x.flagConc){x.flags.push('고객집중');delete x.flagConc;}
+   x.checks={}; x.logs=[{t:today(),m:'시드 데이터로 등록'}];
+   x.url=''; x.listingId='';
+   return x;
+ });
+}
+
+/* ─────────── 유틸 ─────────── */
+function today(){var d=new Date();return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
+function p2(n){return n<10?'0'+n:''+n;}
+function esc(s){return (s==null?'':''+s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+/* 금액은 万円 단위 정수로 보관 */
+function fmt(v){
+  if(v==null||v==='')return '<span style="color:var(--ink-3)">—</span>';
+  if(v>=10000){var o=v/10000;return (Math.round(o*100)/100)+'억엔';}
+  return v.toLocaleString()+'만엔';
+}
+function fmtP(v,d){if(v==null)return '—';return (Math.round(v*(d?100:10))/(d?100:10))+'배';}
+function earn(x){return x.ebitda!=null?x.ebitda:x.op;}
+function askOP(x){var e=earn(x); if(!x.ask||!e||e<=0)return null;
+  var ev=impliedEV(x); return (ev!=null?ev:x.ask)/e;}
+function basis(x){return impliedEV(x)!=null?'실질 EV 기준':'희망가 기준';}
+function netCash(x){if(x.cash==null&&x.debt==null)return null;return (x.cash||0)-(x.debt||0);}
+function impliedEV(x){var nc=netCash(x);if(x.ask==null||nc==null)return null;return x.ask-nc;}
+function track(x){if(x.ask==null)return '미정';return x.ask>=10000?'메인':'볼트온';}
+
+var KILL=['反社·미납','허가 승계 불가','2년 연속 적자'];
+var WARN=['고객집중','오너의존 극심','1엔 매각','결산 미공개'];
+function hasKill(x){return (x.flags||[]).some(function(f){return KILL.indexOf(f)>=0;});}
+function hasWarn(x){return (x.flags||[]).some(function(f){return WARN.indexOf(f)>=0;});}
+
+/* ─────────── 스코어 ─────────── */
+function score(x){
+  var it=[],earned=0,avail=0;
+  function add(lab,w,got,note){
+    if(got==null){it.push({lab:lab,w:w,got:null,note:note||'미입력'});return;}
+    earned+=got;avail+=w;it.push({lab:lab,w:w,got:got,note:note||''});
+  }
+  var r=askOP(x);
+  var pv=null; if(r!=null){pv = r<=3?30 : r<=4?25 : r<=5?20 : r<=6?14 : r<=8?7 : 0;}
+  add('가격 매력도',30,pv, r==null?'가격 또는 이익 미공개':fmtP(r,1)+' · '+basis(x));
+
+  var e=earn(x);
+  add('이익 규모',12, e==null?null:(e>=30000?12:e>=10000?10:e>=5000?7:e>=3000?4:2), e==null?'':fmt(e).replace(/<[^>]+>/g,''));
+
+  add('체크사이즈 적합',8, x.ask==null?null:(x.ask>=10000&&x.ask<=200000?8:x.ask>200000?4:0),
+      x.ask==null?'':track(x)+' 트랙');
+
+  var bs=null,bn='';
+  var nc=netCash(x);
+  if(nc!=null||x.netAssets!=null){
+    if(nc!=null&&nc>0&&(x.netAssets==null||x.netAssets>0)){bs=15;bn='순현금';}
+    else if(x.netAssets!=null&&x.netAssets>0){bs=10;bn='순자산 플러스';}
+    else{bs=3;bn='차입 우위';}
+  }
+  add('재무 건전성',15,bs,bn);
+
+  add('오너 의존도',10, x.ownerDep?({'낮음':10,'보통':6,'높음':2}[x.ownerDep]):null, x.ownerDep||'');
+  add('Exit 경로',10, x.exitPath?({'상장 동종사 존재':10,'업계 인수자 있음':7,'불명':0}[x.exitPath]):null, x.exitPath||'');
+  add('설명 가능성',8, x.explain?({'상':8,'중':5,'하':2}[x.explain]):null, x.explain||'');
+  add('내 역량 등급',7, x.cap?({'A':7,'B':4,'C':2}[x.cap]):null, x.cap||'');
+
+  var pct = avail>0?Math.round(earned/avail*100):0;
+  return {items:it,earned:earned,avail:avail,pct:pct,fill:Math.round(avail)};
+}
+function grade(p,f){
+  if(f<50)return {g:'—',c:'b-gy'};
+  if(p>=78)return {g:'A',c:'b-mi'};
+  if(p>=64)return {g:'B',c:'b-cy'};
+  if(p>=50)return {g:'C',c:'b-am'};
+  return {g:'D',c:'b-ro'};
+}
+
+/* ─────────── 파서 ─────────── */
+function z2h(s){return s.replace(/[０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-65248);}).replace(/，/g,',').replace(/～|〜/g,'~');}
+function yen(str){
+  if(!str)return null;
+  var s=z2h(str).replace(/,/g,'').replace(/\s/g,'');
+  var m=s.match(/([\d.]+)億([\d.]+)?万?/);
+  if(m)return Math.round(parseFloat(m[1])*10000+(m[2]?parseFloat(m[2]):0));
+  m=s.match(/([\d.]+)億/); if(m)return Math.round(parseFloat(m[1])*10000);
+  m=s.match(/([\d.]+)万/); if(m)return Math.round(parseFloat(m[1]));
+  m=s.match(/([\d.]+)円/); if(m)return Math.round(parseFloat(m[1])/10000);
+  m=s.match(/^([\d.]+)$/); if(m)return Math.round(parseFloat(m[1]));
+  return null;
+}
+function rangeMid(str){
+  if(!str)return null;
+  var s=z2h(str);
+  var parts=s.split(/~|ー|―|-|から/);
+  if(parts.length>=2){
+    var a=yen(parts[0]),b=yen(parts[1]);
+    if(a!=null&&b!=null)return Math.round((a+b)/2);
+    return a!=null?a:b;
+  }
+  return yen(s);
+}
+function grab(text,keys){
+  for(var i=0;i<keys.length;i++){
+    var re=new RegExp(keys[i]+'[^0-9０-９]{0,12}([0-9０-９.,]+\\s*[億万円]?[^\\n]{0,24})');
+    var m=text.match(re);
+    if(m)return m[1];
+  }
+  return null;
+}
+
+var IND_MAP=[
+ ['電気工事','電気工事業'],['電気設備','電気工事業'],
+ ['建設','建設業'],['工務店','建設業'],['注文住宅','建設業'],['土木','建設業'],['リフォーム','建設業'],
+ ['食品','食品製造'],['発酵','食品製造'],['健康食品','食品製造'],['惣菜','食品製造'],['菓子','食品製造'],
+ ['システム開発','IT・システム開発'],['ソフトウェア','IT・システム開発'],['SES','IT・システム開発'],
+ ['DX','IT・システム開発'],['Web','IT・システム開発'],['ウェブ','IT・システム開発'],['アプリ','IT・システム開発'],['IT','IT・システム開発'],
+ ['人材派遣','人材派遣・紹介'],['派遣','人材派遣・紹介'],['人材紹介','人材派遣・紹介'],['職業紹介','人材派遣・紹介'],
+ ['教育','教育'],['スクール','教育'],['学習塾','教育'],['塾','教育'],['研修','教育'],
+ ['ロボット','ロボットSIer・産業機械'],['SIer','ロボットSIer・産業機械'],['産業機械','ロボットSIer・産業機械'],
+ ['自動化','ロボットSIer・産業機械'],['装置','ロボットSIer・産業機械'],['半導体','ロボットSIer・産業機械']
+];
+function guessIndustry(t){
+  for(var i=0;i<IND_MAP.length;i++){ if(t.indexOf(IND_MAP[i][0])>=0) return IND_MAP[i][1]; }
+  return '';
+}
+function guessName(t){
+  var ls=t.split(/\n/);
+  for(var i=0;i<ls.length;i++){
+    var l=ls[i].replace(/^[\s\u30fb・|【\[#*>-]+/,'').replace(/[】\]]+$/,'').trim();
+    if(l.length<5||l.length>70)continue;
+    if(/^(売上|年商|営業利益|EBITDA|譲渡|希望|従業員|所在地|エリア|地域|価格|案件|業種|株式譲渡|事業譲渡)/.test(l))continue;
+    if(/^[0-9,.\s億万円~ー-]+$/.test(l))continue;
+    return l.slice(0,60);
+  }
+  return (t.trim().split(/\n/)[0]||'무제').slice(0,60);
+}
+function isDup(o){
+  for(var i=0;i<S.deals.length;i++){
+    var d=S.deals[i];
+    if(o.listingId&&d.listingId&&o.listingId===d.listingId)return d.name;
+    if(o.ask!=null&&d.ask===o.ask&&o.rev!=null&&d.rev===o.rev)return d.name;
+    if(o.name&&d.name===o.name)return d.name;
+  }
+  return null;
+}
+function splitBlocks(t,sep){
+  var b;
+  if(sep==='dash')b=t.split(/^\s*[-=*_]{3,}\s*$/m);
+  else if(sep==='case')b=t.split(/(?=案件\s*(?:No|番号|ID))/);
+  else b=t.split(/\n\s*\n/);
+  return b.map(function(x){return x.trim();}).filter(function(x){return x.length>=20;});
+}
+function parseListing(t){
+  var o={},T=t;
+  o.rev=rangeMid(grab(T,['売上高','年商','売上']));
+  o.op=rangeMid(grab(T,['営業利益']));
+  o.ebitda=rangeMid(grab(T,['修正EBITDA','実態EBITDA','EBITDA','償却前利益']));
+  o.ask=rangeMid(grab(T,['譲渡希望価格','希望譲渡価格','譲渡価格','希望価格','売却希望価格']));
+  o.cash=rangeMid(grab(T,['現預金','現金']));
+  o.debt=rangeMid(grab(T,['有利子負債','借入金']));
+  o.netAssets=rangeMid(grab(T,['純資産']));
+  var em=z2h(T).match(/従業員[^0-9]{0,8}([0-9]+)/); if(em)o.emp=parseInt(em[1]);
+  for(var i=0;i<PREFS.length;i++){if(T.indexOf(PREFS[i])>=0){o.pref=PREFS[i];break;}}
+  o.dealType = T.indexOf('事業譲渡')>=0 ? '事業譲渡' : (T.indexOf('株式譲渡')>=0?'株式譲渡':'');
+  if(/後継者/.test(T))o.reason='후계자 부재';
+  else if(/選択と集中|事業再編|カーブアウト/.test(T))o.reason='사업 재편';
+  else if(/引退|高齢/.test(T))o.reason='오너 은퇴';
+  var flags=[];
+  if(/1円|一円/.test(z2h(T)))flags.push('1엔 매각');
+  o.flags=flags;
+  return o;
+}
+
+/* ─────────── 렌더 ─────────── */
+var S=load(), VIEW='intake', CUR=null, SORT={k:'score',d:-1};
+var VIEWS=[['intake','안건 입력'],['pipe','파이프라인'],['list','딜 목록'],['sector','업종 라이브러리'],['stats','통계']];
+
+function nav(){
+  document.getElementById('nav').innerHTML=VIEWS.map(function(v){
+    var c='';
+    if(v[0]==='pipe')c=S.deals.filter(function(d){return d.status!=='PASS';}).length;
+    if(v[0]==='list')c=S.deals.length;
+    if(v[0]==='sector')c=Object.keys(S.sectors).length;
+    return '<a href="#" class="'+(VIEW===v[0]?'on':'')+'" onclick="go(\''+v[0]+'\');return false">'+v[1]+
+      (c!==''?'<span class="cnt num">'+c+'</span>':'')+'</a>';
+  }).join('');
+}
+function go(v){VIEW=v;CUR=null;render();}
+function render(){nav();document.getElementById('main').innerHTML=({intake:vIntake,pipe:vPipe,list:vList,sector:vSector,stats:vStats,deal:vDeal})[VIEW]();window.scrollTo(0,0);}
+function toast(m){var d=document.createElement('div');d.className='toast';d.textContent=m;document.body.appendChild(d);setTimeout(function(){d.remove();},2200);}
+
+/* 안건 입력 */
+
+var ROUTES=[
+ {g:'매일 — 신착만 훑기 (10분)', note:'新着順으로 정렬하고 앞 1~2페이지만 봅니다. 전체를 다 볼 필요 없습니다.', items:[
+  {n:'BATONZ 売り案件一覧', u:'https://batonz.jp/sell_cases/', d:'국내 최대 규모. 정렬을 新着順으로 바꾸고 상위 2페이지. 비회원은 재무 정보가 가려집니다', t:'회원 등록 권장'},
+  {n:'TRANBI 売却案件一覧', u:'https://www.tranbi.com/buy/list/', d:'가격·매출 공개도가 높음. 아래 두 링크가 더 효율적입니다', t:'무료 회원'},
+  {n:'TRANBI — 株式譲渡만', u:'https://www.tranbi.com/buy/list/property/1/', d:'사업양도를 걸러낸 주식양도 안건만. 법인 인수는 여기부터', t:''},
+  {n:'TRANBI — 값 내린 안건', u:'https://www.tranbi.com/buy/list/?type=price_down', d:'가격을 내렸다는 것은 협상 여지가 있다는 신호입니다', t:'노림수'}
+ ]},
+ {g:'주 2~3회 — 중견 안건 (15분)', note:'규모가 크고 정보 품질이 높은 쪽. 메인 트랙 플랫폼 후보는 대부분 여기서 나옵니다.', items:[
+  {n:'M&Aキャピタルパートナーズ 譲渡案件', u:'https://www.ma-cp.com/deal/', d:'調整後EBITDA·ネットキャッシュ·時価純資産까지 공개. 정보 품질이 가장 좋습니다. 여기부터 보십시오', t:'최우선'},
+  {n:'日本M&Aセンター 案件一覧', u:'https://www.nihon-ma.co.jp/anken/needs_convey.php', d:'2,200건대. 전속 안건 중심이라 매도 의사가 확실합니다', t:''},
+  {n:'ストライク SMART 全案件', u:'https://www.strike.co.jp/smart/search/', d:'제조·건설·B2B 비중이 높고 무차입 우량기업이 자주 나옵니다', t:'제조업 강함'},
+  {n:'M&Aサクシード 案件一覧', u:'https://www.ma-succeed.jp/project', d:'법인 한정 플랫폼. 조건 검색은 아래 링크', t:'법인 전용'},
+  {n:'M&Aサクシード 条件検索', u:'https://www.ma-succeed.jp/buy/search', d:'업종·지역·가격대를 미리 걸어두고 저장해 쓰십시오', t:''}
+ ]},
+ {g:'자동 수집 — 손댈 필요 없음', note:'공공기관 공개 데이터라 규약상 자동 수집이 가능합니다. collect_jfc.py가 매일 알아서 받아옵니다.', items:[
+  {n:'JFC 事業承継マッチング 検索', u:'https://www.jfc.go.jp/n/finance/jigyosyokei/matching/search/', d:'2,383건 공개. 스크립트가 CSV를 통째로 받아 조건에 맞는 것만 걸러냅니다', t:'스크립트 대상'},
+  {n:'JFC 공개 CSV (원본)', u:'https://www.jfc.go.jp/n/finance/jigyosyokei/matching/search/companies.csv', d:'매출·경상이익·순자산·차입금·희망가·업력·종업원수가 전부 들어 있습니다', t:'데이터'}
+ ]},
+ {g:'월 1회 — 오프마켓 채널', note:'플랫폼에 올라오기 전 단계. 경쟁이 가장 적습니다.', items:[
+  {n:'事業承継・引継ぎ支援センター', u:'https://shoukei.smrj.go.jp/', d:'전국 47개 공적 기관. 비공개 DB를 갖고 있어 직접 상담이 필요합니다', t:'상담 필요'},
+  {n:'中小企業庁 事業承継', u:'https://www.chusho.meti.go.jp/zaimu/shoukei/index.html', d:'등록 M&A 업체 목록과 가이드라인. 중개사를 고를 때 여기서 확인', t:'중개사 검증'},
+  {n:'relay (사업승계 플랫폼)', u:'https://relay.town/', d:'실명 공개형. 지자체 연계 안건이 많습니다', t:''}
+ ]}
+];
+function vRoute(){
+  var h='';
+  ROUTES.forEach(function(g){
+    h+='<div class="sect">'+esc(g.g)+'</div>'+
+       '<div class="note" style="margin-bottom:11px">'+esc(g.note)+'</div><div class="panel" style="padding:8px 0">';
+    g.items.forEach(function(x){
+      h+='<div style="padding:11px 18px;border-bottom:1px solid var(--line-soft)">'+
+        '<div class="row" style="justify-content:space-between;gap:12px">'+
+        '<a href="'+esc(x.u)+'" target="_blank" rel="noopener" style="font-size:13.5px;text-decoration:none">'+esc(x.n)+' \u2197</a>'+
+        (x.t?'<span class="b b-cy">'+esc(x.t)+'</span>':'')+'</div>'+
+        '<div style="font-size:12.5px;color:var(--ink-2);margin-top:3px;max-width:78ch">'+esc(x.d)+'</div></div>';
+    });
+    h+='</div>';
+  });
+  h+='<div class="sect">자동 수집 스크립트</div><div class="panel">'+
+   '<p style="font-size:12.5px;color:var(--ink-2);max-width:78ch;margin-top:0">함께 드린 <span class="num">collect_jfc.py</span>를 실행하면 JFC 공개 데이터를 받아 조건에 맞는 안건만 JSON으로 만들어 줍니다. 아래 [수집 파일 병합]으로 불러오면 이미 등록된 안건은 자동으로 건너뜁니다.</p>'+
+   '<div style="background:var(--navy-900);border:1px solid var(--line);border-radius:6px;padding:12px;font-family:ui-monospace,monospace;font-size:12px;color:var(--ink-2);white-space:pre-wrap">python3 collect_jfc.py --min-rev 5000 --min-profit 300\npython3 collect_jfc.py --min-rev 10000 --industries 建設業,食品製造\npython3 collect_jfc.py --all        # 조건 없이 전부</div>'+
+   '<div class="row" style="margin-top:12px"><button class="primary" onclick="document.getElementById(\'mrg\').click()">수집 파일 병합</button></div></div>';
+  return h;
+}
+
+var IMODE='single', BULK=[];
+function vIntake(){
+  var tab=function(k,l){return '<button class="'+(IMODE===k?'primary':'ghost')+'" onclick="IMODE=\''+k+'\';render()">'+l+'</button>';};
+  var h='<div class="head"><div><h2>안건 입력</h2>'+
+   '<p>플랫폼의 검색 결과 목록을 통째로 복사해 붙여넣으면 여러 건을 한 번에 등록합니다. 매출·이익·희망가·지역·양도형태를 자동으로 뽑아내고, 이미 등록된 안건은 중복으로 표시합니다.</p></div>'+
+   '<div class="row">'+tab('single','한 건씩')+tab('bulk','목록 일괄')+tab('route','수집 루트')+tab('help','가져오는 법')+'</div></div>';
+  if(IMODE==='route')return h+vRoute();
+  if(IMODE==='help')return h+vHelp();
+  if(IMODE==='bulk')return h+
+   '<div class="panel"><div class="grid3">'+
+    '<div><label class="f">구분 방식</label><select id="bsep">'+
+     '<option value="blank">빈 줄로 구분</option><option value="case">案件No / 案件番号로 구분</option><option value="dash">--- 구분선으로 구분</option></select></div>'+
+    sel('bsrc','소스','',SOURCES)+
+    '<div style="display:flex;align-items:flex-end"><button class="primary" style="width:100%" onclick="doBulk()">목록 읽기</button></div>'+
+   '</div>'+
+   '<div style="margin-top:12px"><label class="f">목록 페이지 본문</label>'+
+   '<textarea id="braw" rows="11" placeholder="검색 결과 페이지를 전체 선택(Ctrl+A)해서 복사한 뒤 그대로 붙여넣으세요.&#10;&#10;案件No.12345 千葉県 空港関連 人材派遣&#10;売上高 3億円〜5億円 / 営業利益 3,300万円&#10;譲渡希望価格 1億円&#10;&#10;案件No.12346 広島県 注文住宅建設&#10;売上高 2.5億円〜5億円 / 営業利益 5,000万円超&#10;譲渡希望価格 5億円"></textarea></div>'+
+   '</div><div id="bpv"></div>';
+  return h+
+   '<div class="panel"><label class="f">안건 본문 (일본어 원문 그대로)</label>'+
+   '<textarea id="raw" rows="9" placeholder="売上高 5,000万円〜1億円&#10;営業利益 3,300万円&#10;譲渡希望価格 1億円&#10;千葉県 / 株式譲渡 / 後継者不在"></textarea>'+
+   '<div class="row" style="margin-top:11px"><button class="primary" onclick="doParse()">본문 읽기</button>'+
+   '<button class="ghost" onclick="newBlank()">빈 양식으로 직접 입력</button></div></div>'+
+   '<div id="pv"></div>';
+}
+var BM = "javascript:(function(){var t=document.body.innerText;var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();document.execCommand('copy');a.remove();alert('페이지 본문을 복사했습니다. Deal Radar에 붙여넣으세요. ('+t.length+'자)');})()";
+function vHelp(){
+  return '<div class="panel"><div class="sect" style="margin-top:0">가장 빠른 방법</div>'+
+  '<div class="note">플랫폼에서 검색 조건을 걸고 결과 목록을 띄운 뒤, 페이지 전체를 선택(Ctrl+A)해 복사하고 위 <b>목록 일괄</b> 탭에 붙여넣으십시오. 20~30건이 한 번에 들어옵니다.</div>'+
+  '<div class="sect">북마클릿 — 복사를 한 번에</div>'+
+  '<p style="font-size:12.5px;color:var(--ink-2);max-width:74ch">아래 코드를 브라우저 북마크로 등록해두면, 안건 페이지에서 북마크를 한 번 누르는 것만으로 본문 전체가 클립보드에 복사됩니다. 페이지를 직접 열어 읽는 것과 같은 동작이라 플랫폼 규약에 걸리지 않습니다.</p>'+
+  '<div class="row"><textarea id="bmk" rows="3" style="font-family:ui-monospace,monospace;font-size:11.5px">'+esc(BM)+'</textarea></div>'+
+  '<div class="row" style="margin-top:9px"><button onclick="copyBM()">북마클릿 코드 복사</button></div>'+
+  '<div class="sect">등록 방법</div>'+
+  '<p style="font-size:12.5px;color:var(--ink-2);max-width:74ch">브라우저에서 북마크 추가 → 이름은 자유롭게(예: 안건 복사) → URL 칸에 위 코드를 붙여넣고 저장. 안건 페이지에서 그 북마크를 누르면 됩니다.</p>'+
+  '<div class="sect">자동 수집이 안 되는 이유</div>'+
+  '<p style="font-size:12.5px;color:var(--ink-2);max-width:74ch">브라우저는 로컬 파일이 외부 사이트에 접속하는 것을 보안 정책으로 차단합니다. 우회 방법은 없습니다. 또한 주요 플랫폼은 이용규약에서 자동 수집을 금지하고 있어, 계정 정지 위험을 감수할 만한 실익이 없습니다. 공개 데이터(JFC 사업승계 DB, gBizINFO, 官報 결산공고)는 규약상 자동 수집이 가능하므로, 이건 별도의 수집 스크립트로 만들어 JSON으로 넣는 방식이 맞습니다.</p></div>';
+}
+function copyBM(){var t=document.getElementById('bmk');t.select();try{document.execCommand('copy');toast('복사했습니다');}catch(e){toast('직접 선택해 복사해 주세요');}}
+function doBulk(){
+  var t=document.getElementById('braw').value;
+  if(!t.trim()){toast('목록을 붙여넣어 주세요');return;}
+  var src=document.getElementById('f_bsrc').value;
+  var bl=splitBlocks(t,document.getElementById('bsep').value);
+  if(!bl.length){toast('구분되는 안건을 찾지 못했습니다. 구분 방식을 바꿔보세요');return;}
+  BULK=bl.map(function(b){
+    var o=parseListing(b);
+    o.name=guessName(b); o.industry=guessIndustry(b); o.source=src; o.memo=b.slice(0,600);
+    o.hold=5; o.on=true; o.dup=isDup(o);
+    return o;
+  });
+  renderBulk();
+}
+function renderBulk(){
+  var secs=Object.keys(S.sectors);
+  var n=BULK.filter(function(o){return o.on;}).length;
+  var h='<div class="sect">읽어낸 안건 <span class="num" style="color:var(--cyan)">'+BULK.length+'건</span>'+
+   ' <span style="color:var(--ink-3)">· 선택 '+n+'건</span></div><div class="panel">'+
+   '<div class="row" style="margin-bottom:11px"><button onclick="bulkAll(true)">전체 선택</button>'+
+   '<button onclick="bulkAll(false)">전체 해제</button>'+
+   '<button onclick="bulkDedup()">중복 제외</button>'+
+   '<span style="flex:1"></span><button class="primary" onclick="bulkSave()">선택한 '+n+'건 등록</button></div>'+
+   '<table><thead><tr><th style="width:34px"></th><th>안건명</th><th>업종</th><th>지역</th>'+
+   '<th class="r">매출</th><th class="r">이익</th><th class="r">희망가</th><th class="r">배수</th></tr></thead><tbody>';
+  BULK.forEach(function(o,i){
+    var r=askOP(o);
+    h+='<tr'+(o.dup?' style="opacity:.55"':'')+'>'+
+     '<td><input type="checkbox"'+(o.on?' checked':'')+' onchange="BULK['+i+'].on=this.checked;renderBulk()" style="width:15px;height:15px;accent-color:var(--cyan)"></td>'+
+     '<td><input value="'+esc(o.name)+'" onchange="BULK['+i+'].name=this.value" style="min-width:210px">'+
+       (o.dup?'<div style="margin-top:4px"><span class="b b-am">중복 가능성 · '+esc(o.dup)+'</span></div>':'')+'</td>'+
+     '<td><select onchange="BULK['+i+'].industry=this.value"><option value=""></option>'+
+       secs.map(function(k){return '<option'+(o.industry===k?' selected':'')+'>'+esc(k)+'</option>';}).join('')+'</select></td>'+
+     '<td style="font-size:12.5px;color:var(--ink-2)">'+esc(o.pref||'—')+'</td>'+
+     '<td class="r num">'+fmt(o.rev)+'</td><td class="r num">'+fmt(o.ebitda!=null?o.ebitda:o.op)+'</td>'+
+     '<td class="r num">'+fmt(o.ask)+'</td>'+
+     '<td class="r num" style="color:var(--cyan)">'+(r?fmtP(r,1):'<span style="color:var(--ink-3)">—</span>')+'</td></tr>';
+  });
+  h+='</tbody></table><div class="note" style="margin-top:12px">등록 후 각 딜에서 오너 의존도·Exit 경로·역량 등급을 채우면 점수가 완성됩니다. 그 전까지는 데이터 충실도가 낮아 점수가 표시되지 않습니다.</div></div>';
+  document.getElementById('bpv').innerHTML=h;
+}
+function bulkAll(v){BULK.forEach(function(o){o.on=v;});renderBulk();}
+function bulkDedup(){BULK.forEach(function(o){if(o.dup)o.on=false;});renderBulk();toast('중복 가능성 건을 해제했습니다');}
+function bulkSave(){
+  var sel=BULK.filter(function(o){return o.on;});
+  if(!sel.length){toast('등록할 안건을 선택해 주세요');return;}
+  sel.forEach(function(o){
+    var d={};for(var k in o)if(['on','dup'].indexOf(k)<0)d[k]=o[k];
+    d.id=++S.seq;d.status='신규';d.created=today();d.checks={};d.logs=[{t:today(),m:'목록 일괄 등록'}];
+    d.flags=d.flags||[];
+    S.deals.push(d);
+  });
+  save();BULK=[];toast(sel.length+'건 등록했습니다');go('pipe');
+}
+function doParse(){
+  var t=document.getElementById('raw').value;
+  if(!t.trim()){toast('본문을 붙여넣어 주세요');return;}
+  var o=parseListing(t); o.memo=t.slice(0,600);
+  showForm(o);
+}
+function newBlank(){showForm({});}
+function showForm(o){
+  document.getElementById('pv').innerHTML='<div class="sect">읽어낸 내용 확인</div>'+form(o,true);
+  window.scrollTo(0,document.body.scrollHeight);
+}
+function fld(id,lab,val,type){
+  return '<div><label class="f">'+lab+'</label><input id="f_'+id+'" type="'+(type||'text')+'" value="'+(val==null?'':esc(val))+'"></div>';
+}
+function sel(id,lab,val,opts,blank){
+  if(val&&opts.indexOf(val)<0)opts=[val].concat(opts);
+  return '<div><label class="f">'+lab+'</label><select id="f_'+id+'">'+
+   (blank===false?'':'<option value=""></option>')+
+   opts.map(function(o){return '<option'+(o===val?' selected':'')+'>'+esc(o)+'</option>';}).join('')+'</select></div>';
+}
+function form(o,isNew){
+  var secs=Object.keys(S.sectors);
+  return '<div class="panel">'+
+  '<div class="grid3">'+
+   fld('name','안건명 (가칭)',o.name)+
+   sel('industry','업종',o.industry,secs)+
+   sel('pref','지역',o.pref,PREFS)+
+  '</div><div class="grid3" style="margin-top:12px">'+
+   sel('source','소스',o.source,SOURCES)+
+   sel('dealType','양도 형태',o.dealType,['株式譲渡','事業譲渡'])+
+   fld('listingId','안건번호',o.listingId)+
+  '</div>'+
+  '<div class="sect">재무 (단위: 만엔 · 1억엔 = 10000)</div>'+
+  '<div class="grid4">'+
+   fld('rev','매출',o.rev,'number')+fld('op','영업이익',o.op,'number')+
+   fld('ebitda','정상화 EBITDA',o.ebitda,'number')+fld('ask','희망 가격',o.ask,'number')+
+  '</div><div class="grid4" style="margin-top:12px">'+
+   fld('cash','현금',o.cash,'number')+fld('debt','차입금',o.debt,'number')+
+   fld('netAssets','순자산',o.netAssets,'number')+fld('emp','종업원 수',o.emp,'number')+
+  '</div>'+
+  '<div class="sect">판단</div>'+
+  '<div class="grid4">'+
+   sel('ownerDep','오너 의존도',o.ownerDep,['낮음','보통','높음'])+
+   sel('exitPath','Exit 경로',o.exitPath,['상장 동종사 존재','업계 인수자 있음','불명'])+
+   sel('explain','설명 가능성',o.explain,['상','중','하'])+
+   sel('cap','내 역량 등급',o.cap,['A','B','C'])+
+  '</div><div class="grid3" style="margin-top:12px">'+
+   fld('reason','매각 이유',o.reason)+
+   fld('hold','목표 보유기간 (년)',o.hold==null?5:o.hold,'number')+
+   fld('url','원문 URL',o.url)+
+  '</div>'+
+  '<div class="sect">플래그</div><div class="row">'+
+   KILL.concat(WARN).map(function(f){
+     var on=(o.flags||[]).indexOf(f)>=0;
+     return '<label style="display:flex;gap:6px;align-items:center;font-size:12.5px;color:'+(KILL.indexOf(f)>=0?'var(--rose)':'var(--amber)')+'">'+
+       '<input type="checkbox" class="flagbox" value="'+f+'"'+(on?' checked':'')+' style="width:15px;height:15px;accent-color:var(--cyan)">'+f+'</label>';
+   }).join('')+'</div>'+
+  '<div class="sect">메모</div><textarea id="f_memo" rows="4">'+esc(o.memo||'')+'</textarea>'+
+  '<div class="row" style="margin-top:14px"><button class="primary" onclick="saveForm('+(isNew?'null':o.id)+')">'+(isNew?'딜 등록':'변경 저장')+'</button>'+
+  (isNew?'':'<button class="ghost" onclick="openDeal('+o.id+')">취소</button>')+'</div></div>';
+}
+function gv(id){var e=document.getElementById('f_'+id);return e?e.value.trim():'';}
+function gn(id){var v=gv(id);return v===''?null:Number(v);}
+function saveForm(id){
+  var name=gv('name');
+  if(!name){toast('안건명을 입력해 주세요');return;}
+  var flags=[].slice.call(document.querySelectorAll('.flagbox')).filter(function(c){return c.checked;}).map(function(c){return c.value;});
+  var o={name:name,industry:gv('industry'),pref:gv('pref'),source:gv('source'),dealType:gv('dealType'),
+    listingId:gv('listingId'),rev:gn('rev'),op:gn('op'),ebitda:gn('ebitda'),ask:gn('ask'),cash:gn('cash'),
+    debt:gn('debt'),netAssets:gn('netAssets'),emp:gn('emp'),ownerDep:gv('ownerDep'),exitPath:gv('exitPath'),
+    explain:gv('explain'),cap:gv('cap'),reason:gv('reason'),hold:gn('hold'),url:gv('url'),flags:flags,memo:gv('memo')};
+  if(id==null){
+    o.id=++S.seq;o.status='신규';o.created=today();o.checks={};o.logs=[{t:today(),m:'등록'}];
+    S.deals.push(o);save();toast('등록했습니다');CUR=o.id;VIEW='deal';render();
+  }else{
+    var d=S.deals.filter(function(x){return x.id===id;})[0];
+    for(var k in o)d[k]=o[k];
+    d.logs.push({t:today(),m:'내용 수정'});save();toast('저장했습니다');CUR=id;VIEW='deal';render();
+  }
+}
+
+/* 파이프라인 */
+function vPipe(){
+  var h='<div class="head"><div><h2>파이프라인</h2><p>카드를 눌러 상세로 들어갑니다. PASS로 옮길 때는 사유를 반드시 남깁니다 — 6개월 뒤에 그 기록이 자산이 됩니다.</p></div>'+
+   '<button class="primary" onclick="go(\'intake\')">안건 추가</button></div><div class="kan">';
+  STATUS.forEach(function(st){
+    var ds=S.deals.filter(function(d){return d.status===st;});
+    ds.sort(function(a,b){return score(b).pct-score(a).pct;});
+    h+='<div class="col"><h3>'+st+'<span class="num">'+ds.length+'</span></h3>';
+    h+=ds.map(function(d){
+      var s=score(d),g=grade(s.pct,s.fill),r=askOP(d);
+      var cls=hasKill(d)?'kill':hasWarn(d)?'warn':(g.g==='A'?'good':'');
+      return '<div class="card '+cls+'" onclick="openDeal('+d.id+')">'+
+        '<div class="nm">'+esc(d.name)+'</div>'+
+        '<div class="mt"><span>'+(r?'<span class="num">'+fmtP(r,1)+'</span>':'가격 미정')+'</span>'+
+        '<span class="num" style="color:var(--cyan)">'+(s.fill<50?'—':s.pct)+'</span></div></div>';
+    }).join('')||'<div style="font-size:11.5px;color:var(--ink-3);padding:8px 0">없음</div>';
+    h+='</div>';
+  });
+  return h+'</div>';
+}
+
+/* 목록 */
+function vList(){
+  var ds=S.deals.slice();
+  ds.sort(function(a,b){
+    var k=SORT.k,va,vb;
+    if(k==='score'){va=score(a).pct;vb=score(b).pct;}
+    else if(k==='ratio'){va=askOP(a)||999;vb=askOP(b)||999;}
+    else {va=a[k];vb=b[k];}
+    if(va==null)va=SORT.d<0?-Infinity:Infinity; if(vb==null)vb=SORT.d<0?-Infinity:Infinity;
+    return va>vb?SORT.d:va<vb?-SORT.d:0;
+  });
+  var h='<div class="head"><div><h2>딜 목록</h2><p>제목을 눌러 정렬합니다. 1억엔 미만은 볼트온 트랙으로 자동 분류되며, 지금 PASS해도 나중에 플랫폼이 정해지면 후보 풀이 됩니다.</p></div>'+
+   '<button class="primary" onclick="go(\'intake\')">안건 추가</button></div><div class="panel"><table><thead><tr>'+
+   [['name','안건'],['industry','업종'],['ask','희망가'],['ratio','배수'],['track','트랙'],['score','점수'],['status','상태']]
+   .map(function(c){return '<th'+(['ask','ratio','score'].indexOf(c[0])>=0?' class="r"':'')+' onclick="sortBy(\''+c[0]+'\')">'+c[1]+(SORT.k===c[0]?(SORT.d>0?' ↑':' ↓'):'')+'</th>';}).join('')+
+   '</tr></thead><tbody>';
+  h+=ds.map(function(d){
+    var s=score(d),g=grade(s.pct,s.fill),r=askOP(d);
+    return '<tr onclick="openDeal('+d.id+')"><td>'+esc(d.name)+
+      (hasKill(d)?' <span class="b b-ro">킬</span>':hasWarn(d)?' <span class="b b-am">주의</span>':'')+'</td>'+
+      '<td style="color:var(--ink-2);font-size:12.5px">'+esc(d.industry||'—')+'</td>'+
+      '<td class="r num">'+fmt(d.ask)+'</td>'+
+      '<td class="r num">'+(r?fmtP(r,1):'<span style="color:var(--ink-3)">—</span>')+'</td>'+
+      '<td><span class="b '+(track(d)==='메인'?'b-cy':'b-gy')+'">'+track(d)+'</span></td>'+
+      '<td class="r"><span class="b '+g.c+'">'+g.g+'</span> <span class="num" style="color:var(--ink-2)">'+(s.fill<50?'':s.pct)+'</span></td>'+
+      '<td style="font-size:12.5px;color:var(--ink-2)">'+esc(d.status)+'</td></tr>';
+  }).join('');
+  return h+'</tbody></table>'+(ds.length?'':'<div class="empty">등록된 안건이 없습니다.</div>')+'</div>';
+}
+function sortBy(k){if(SORT.k===k)SORT.d=-SORT.d;else{SORT.k=k;SORT.d=-1;}render();}
+
+/* 딜 상세 */
+function openDeal(id){CUR=id;VIEW='deal';render();}
+function vDeal(){
+  var d=S.deals.filter(function(x){return x.id===CUR;})[0];
+  if(!d)return '<div class="empty">딜을 찾을 수 없습니다.</div>';
+  var s=score(d),g=grade(s.pct,s.fill),r=askOP(d),ev=impliedEV(d),nc=netCash(d);
+  var sec=S.sectors[d.industry];
+  var qs=COMMON_Q.concat(sec&&sec.q?sec.q:[]);
+  var done=qs.filter(function(q){return d.checks[q];}).length;
+
+  var h='<div class="head"><div><h2>'+esc(d.name)+'</h2><p>'+
+    [d.industry,d.pref,d.source,d.dealType].filter(Boolean).map(esc).join(' · ')+
+    (d.url?' · <a href="'+esc(d.url)+'" target="_blank" rel="noopener">원문</a>':'')+'</p></div>'+
+    '<div class="row"><button class="ghost" onclick="editDeal('+d.id+')">수정</button>'+
+    '<button class="danger" onclick="delDeal('+d.id+')">삭제</button></div></div>';
+
+  if(hasKill(d))h+='<div class="note" style="border-left-color:var(--rose);color:var(--rose);margin-bottom:14px">즉시 탈락 사유가 표시되어 있습니다: '+
+    (d.flags.filter(function(f){return KILL.indexOf(f)>=0;}).join(', '))+'</div>';
+
+  h+='<div class="grid3">';
+  /* 지표 */
+  h+='<div class="panel"><div class="sect" style="margin-top:0">핵심 지표</div><dl class="kv">'+
+    '<dt>희망 가격</dt><dd class="num">'+fmt(d.ask)+'</dd>'+
+    '<dt>매출</dt><dd class="num">'+fmt(d.rev)+'</dd>'+
+    '<dt>영업이익</dt><dd class="num">'+fmt(d.op)+'</dd>'+
+    '<dt>정상화 EBITDA</dt><dd class="num">'+fmt(d.ebitda)+'</dd>'+
+    '<dt>배수</dt><dd class="num" style="color:var(--cyan)">'+(r?fmtP(r,1)+' <span style="color:var(--ink-3);font-size:11.5px">'+basis(d)+'</span>':'—')+'</dd>'+
+    '<dt>순현금</dt><dd class="num">'+(nc==null?'<span style="color:var(--ink-3)">—</span>':fmt(nc))+'</dd>'+
+    '<dt>실질 EV</dt><dd class="num">'+(ev==null?'<span style="color:var(--ink-3)">차입·현금 미확인</span>':fmt(ev))+'</dd>'+
+    '<dt>종업원</dt><dd class="num">'+(d.emp==null?'—':d.emp+'명')+'</dd>'+
+    '<dt>트랙</dt><dd><span class="b '+(track(d)==='메인'?'b-cy':'b-gy')+'">'+track(d)+'</span></dd>'+
+    '<dt>보유 목표</dt><dd class="num">'+(d.hold||5)+'년</dd>'+
+    '</dl></div>';
+  /* 점수 */
+  h+='<div class="panel"><div class="sect" style="margin-top:0">1차 점수</div>'+
+    '<div class="row" style="align-items:baseline;gap:12px;margin-bottom:6px"><span class="score num" style="color:var(--cyan)">'+(s.fill<50?'—':s.pct)+'</span>'+
+    '<span class="b '+g.c+'">'+g.g+'</span><span style="font-size:11.5px;color:var(--ink-3)">데이터 충실도 '+s.fill+'%</span></div>'+
+    '<div class="bar" style="margin-bottom:12px"><i style="width:'+(s.fill<50?0:s.pct)+'%"></i></div><div class="brk">';
+  s.items.forEach(function(i){
+    h+='<span class="lab">'+i.lab+(i.note?' <span style="color:var(--ink-3)">'+esc(i.note)+'</span>':'')+'</span>'+
+       '<span class="val num" style="color:'+(i.got==null?'var(--ink-3)':'var(--ink)')+'">'+(i.got==null?'—':i.got+'/'+i.w)+'</span>';
+  });
+  h+='</div>'+(s.fill<50?'<div class="note" style="margin-top:11px">입력된 항목이 절반 미만이라 점수를 표시하지 않습니다. 추정보다 공백이 낫습니다.</div>':'')+'</div>';
+  /* 상태 */
+  h+='<div class="panel"><div class="sect" style="margin-top:0">상태</div>'+
+    '<label class="f">단계</label><select onchange="moveStatus('+d.id+',this.value)">'+
+    STATUS.map(function(st){return '<option'+(d.status===st?' selected':'')+'>'+st+'</option>';}).join('')+'</select>'+
+    (d.passReason?'<div class="note" style="margin-top:11px"><b style="color:var(--ink-3);font-weight:400">PASS 사유</b><br>'+esc(d.passReason)+'</div>':'')+
+    '<div class="sect">판단 태그</div><div class="row">'+
+    ['오너 의존 '+(d.ownerDep||'미평가'),'Exit '+(d.exitPath||'미평가'),'설명 '+(d.explain||'미평가'),'역량 '+(d.cap||'미평가')]
+    .map(function(t){return '<span class="b b-gy">'+esc(t)+'</span>';}).join('')+'</div>'+
+    (d.flags&&d.flags.length?'<div class="sect">플래그</div><div class="row">'+d.flags.map(function(f){
+      return '<span class="b '+(KILL.indexOf(f)>=0?'b-ro':'b-am')+'">'+esc(f)+'</span>';}).join('')+'</div>':'')+
+    '<div class="sect">매각 이유</div><div style="font-size:13px;color:var(--ink-2)">'+esc(d.reason||'미확인')+'</div>'+
+    '</div></div>';
+
+  /* 업종 참조 */
+  if(sec){
+    h+='<div class="sect">업종 참조 — '+esc(d.industry)+'</div><div class="panel grid4">'+
+     '<div><label class="f">상장사 배수 (중앙값)</label><div class="num">'+esc(sec.listed)+'</div></div>'+
+     '<div><label class="f">비상장 소형 목표 밴드</label><div class="num" style="color:var(--cyan)">'+esc(sec.band)+'</div></div>'+
+     '<div style="grid-column:span 2"><label class="f">허가·면허</label><div style="font-size:12.5px;color:var(--ink-2)">'+esc(sec.lic)+'</div></div>'+
+     '<div style="grid-column:span 2"><label class="f">핵심 인력 리스크</label><div style="font-size:12.5px;color:var(--ink-2)">'+esc(sec.people)+'</div></div>'+
+     '<div style="grid-column:span 2"><label class="f">숨은 부채</label><div style="font-size:12.5px;color:var(--ink-2)">'+esc(sec.hidden)+'</div></div>'+
+     '</div>';
+  }else if(d.industry){
+    h+='<div class="sect">업종 참조</div><div class="panel"><div class="note">'+esc(d.industry)+' 모듈이 아직 없습니다. 업종 라이브러리에서 추가하면 다음 안건부터 자동으로 붙습니다.</div>'+
+    '<div style="margin-top:11px"><button onclick="go(\'sector\')">업종 모듈 만들기</button></div></div>';
+  }
+
+  /* 확인 리스트 */
+  h+='<div class="sect">확인해야 할 것 <span class="num" style="color:var(--cyan)">'+done+'/'+qs.length+'</span></div><div class="panel">';
+  qs.forEach(function(q,i){
+    h+='<div class="chk"><input type="checkbox" id="q'+i+'"'+(d.checks[q]?' checked':'')+
+      ' onchange="toggleCheck('+d.id+','+i+')"><label class="q" for="q'+i+'" style="cursor:pointer">'+esc(q)+'</label></div>';
+  });
+  h+='</div>';
+
+  /* 메모·이력 */
+  h+='<div class="grid2" style="margin-top:22px">'+
+   '<div class="panel"><div class="sect" style="margin-top:0">메모</div>'+
+   '<textarea id="memo" rows="8">'+esc(d.memo||'')+'</textarea>'+
+   '<div class="row" style="margin-top:10px"><button class="primary" onclick="saveMemo('+d.id+')">메모 저장</button></div></div>'+
+   '<div class="panel"><div class="sect" style="margin-top:0">이력</div>'+
+   (d.logs||[]).slice().reverse().map(function(l){return '<div class="log"><b class="num">'+l.t+'</b> · '+esc(l.m)+'</div>';}).join('')+
+   '</div></div>';
+  return h;
+}
+function editDeal(id){var d=S.deals.filter(function(x){return x.id===id;})[0];VIEW='intake';render();
+  document.getElementById('pv').innerHTML='<div class="sect">안건 수정</div>'+form(d,false);window.scrollTo(0,300);}
+function delDeal(id){
+  if(!confirm('이 딜을 삭제합니다. 되돌릴 수 없습니다.'))return;
+  S.deals=S.deals.filter(function(x){return x.id!==id;});save();go('list');
+}
+function moveStatus(id,st){
+  var d=S.deals.filter(function(x){return x.id===id;})[0];
+  if(st==='PASS'){
+    var r=prompt('PASS 사유를 남겨주세요. (가격 / 규모 / Exit 부재 / 오너 의존 / 업종 부적합 등)',d.passReason||'');
+    if(r==null||!r.trim()){toast('사유 없이는 PASS로 옮기지 않습니다');render();return;}
+    d.passReason=r.trim();
+  }
+  d.status=st;d.logs.push({t:today(),m:'상태 → '+st+(d.passReason&&st==='PASS'?' ('+d.passReason+')':'')});
+  save();render();toast(st+'(으)로 이동');
+}
+function toggleCheck(id,i){
+  var d=S.deals.filter(function(x){return x.id===id;})[0];
+  var sec=S.sectors[d.industry];
+  var qs=COMMON_Q.concat(sec&&sec.q?sec.q:[]);
+  var q=qs[i]; d.checks[q]=!d.checks[q]; save(); render();
+}
+function saveMemo(id){
+  var d=S.deals.filter(function(x){return x.id===id;})[0];
+  d.memo=document.getElementById('memo').value;d.logs.push({t:today(),m:'메모 갱신'});save();toast('저장했습니다');render();
+}
+
+/* 업종 라이브러리 */
+function vSector(){
+  var ks=Object.keys(S.sectors);
+  var h='<div class="head"><div><h2>업종 라이브러리</h2><p>새 업종 안건이 들어올 때마다 여기에 모듈을 하나씩 만들어 두면, 같은 업종이 다시 왔을 때 확인 항목과 배수 기준이 자동으로 붙습니다.</p></div>'+
+   '<button class="primary" onclick="editSector(\'\')">업종 추가</button></div>';
+  h+='<div class="grid2">'+ks.map(function(k){
+    var s=S.sectors[k],n=S.deals.filter(function(d){return d.industry===k;}).length;
+    return '<div class="panel"><div class="row" style="justify-content:space-between"><b>'+esc(k)+'</b>'+
+      '<span class="b b-gy num">'+n+'건</span></div>'+
+      '<dl class="kv" style="margin-top:11px"><dt>상장 배수</dt><dd class="num">'+esc(s.listed)+'</dd>'+
+      '<dt>목표 밴드</dt><dd class="num" style="color:var(--cyan)">'+esc(s.band)+'</dd>'+
+      '<dt>허가</dt><dd style="font-size:12.5px;color:var(--ink-2)">'+esc(s.lic)+'</dd>'+
+      '<dt>확인 항목</dt><dd class="num">'+(s.q||[]).length+'개</dd></dl>'+
+      '<div class="row" style="margin-top:11px"><button onclick="editSector(\''+esc(k)+'\')">수정</button></div></div>';
+  }).join('')+'</div>';
+  h+='<div id="sedit"></div>';
+  return h;
+}
+function editSector(k){
+  var s=S.sectors[k]||{listed:'',band:'',lic:'',people:'',hidden:'',q:[]};
+  document.getElementById('sedit').innerHTML='<div class="sect">'+(k?'업종 수정':'업종 추가')+'</div><div class="panel">'+
+   '<div class="grid3">'+fld('sk','업종명',k)+fld('sl','상장사 배수 (중앙값)',s.listed)+fld('sb','비상장 소형 목표 밴드',s.band)+'</div>'+
+   '<div style="margin-top:12px"><label class="f">허가·면허</label><input id="f_slic" value="'+esc(s.lic)+'"></div>'+
+   '<div class="grid2" style="margin-top:12px">'+
+   '<div><label class="f">핵심 인력 리스크</label><input id="f_sp" value="'+esc(s.people)+'"></div>'+
+   '<div><label class="f">숨은 부채</label><input id="f_sh" value="'+esc(s.hidden)+'"></div></div>'+
+   '<div style="margin-top:12px"><label class="f">업종별 확인 항목 (한 줄에 하나)</label>'+
+   '<textarea id="f_sq" rows="7">'+esc((s.q||[]).join('\n'))+'</textarea></div>'+
+   '<div class="row" style="margin-top:14px"><button class="primary" onclick="saveSector(\''+esc(k)+'\')">저장</button>'+
+   (k?'<button class="danger" onclick="delSector(\''+esc(k)+'\')">삭제</button>':'')+'</div></div>';
+  window.scrollTo(0,document.body.scrollHeight);
+}
+function saveSector(old){
+  var k=gv('sk'); if(!k){toast('업종명을 입력해 주세요');return;}
+  if(old&&old!==k)delete S.sectors[old];
+  S.sectors[k]={listed:gv('sl'),band:gv('sb'),lic:gv('slic'),people:gv('sp'),hidden:gv('sh'),
+    q:gv('sq').split('\n').map(function(x){return x.trim();}).filter(Boolean)};
+  save();toast('저장했습니다');render();
+}
+function delSector(k){if(!confirm(k+' 모듈을 삭제합니다.'))return;delete S.sectors[k];save();render();}
+
+/* 통계 */
+function vStats(){
+  var ds=S.deals, main=ds.filter(function(d){return track(d)==='메인';}),
+      bolt=ds.filter(function(d){return track(d)==='볼트온';}),
+      act=ds.filter(function(d){return ['IM요청','NDA','DD','LOI'].indexOf(d.status)>=0;}),
+      pass=ds.filter(function(d){return d.status==='PASS';});
+  var h='<div class="head"><div><h2>통계</h2><p>안건이 쌓일수록 업종별 실제 배수 분포가 만들어집니다. 이건 돈 주고도 사기 어려운 데이터입니다.</p></div></div>';
+  h+='<div class="grid4">'+[[ds.length,'전체 안건'],[main.length,'메인 트랙'],[bolt.length,'볼트온 후보'],[act.length,'검토 진행 중']]
+   .map(function(x){return '<div class="panel stat"><div class="n num" style="color:var(--cyan)">'+x[0]+'</div><div class="l">'+x[1]+'</div></div>';}).join('')+'</div>';
+
+  /* 업종별 배수 */
+  var by={};
+  ds.forEach(function(d){var r=askOP(d);if(!d.industry||!r)return;(by[d.industry]=by[d.industry]||[]).push(r);});
+  var ks=Object.keys(by);
+  h+='<div class="sect">업종별 희망가/이익 배수</div><div class="panel">';
+  if(!ks.length)h+='<div class="empty">가격과 이익이 모두 입력된 안건이 아직 없습니다.</div>';
+  ks.forEach(function(k){
+    var a=by[k].slice().sort(function(x,y){return x-y;});
+    var med=a[Math.floor(a.length/2)];
+    var band=S.sectors[k]?S.sectors[k].band:'';
+    h+='<div class="hbar"><span class="t">'+esc(k)+'</span><span class="g"><i style="width:'+Math.min(100,med/10*100)+'%"></i></span>'+
+      '<span class="num" style="width:110px;text-align:right">중앙값 '+fmtP(med,1)+'</span>'+
+      '<span style="width:96px;color:var(--ink-3);font-size:11.5px">'+(band?'목표 '+esc(band):'')+'</span>'+
+      '<span class="num" style="color:var(--ink-3);width:34px;text-align:right">'+a.length+'건</span></div>';
+  });
+  h+='</div>';
+
+  /* 소스별 */
+  var bs={};ds.forEach(function(d){bs[d.source||'미분류']=(bs[d.source||'미분류']||0)+1;});
+  var mx=Math.max.apply(null,Object.keys(bs).map(function(k){return bs[k];}).concat([1]));
+  h+='<div class="sect">소스별 안건 수</div><div class="panel">'+
+   Object.keys(bs).sort(function(a,b){return bs[b]-bs[a];}).map(function(k){
+     return '<div class="hbar"><span class="t">'+esc(k)+'</span><span class="g"><i style="width:'+(bs[k]/mx*100)+'%"></i></span>'+
+       '<span class="num" style="width:40px;text-align:right">'+bs[k]+'</span></div>';
+   }).join('')+'</div>';
+
+  /* PASS 사유 */
+  h+='<div class="sect">PASS 기록 <span class="num" style="color:var(--ink-3)">'+pass.length+'건</span></div><div class="panel">'+
+   (pass.length?pass.map(function(d){
+     return '<div class="log" style="cursor:pointer" onclick="openDeal('+d.id+')"><b>'+esc(d.industry||'—')+'</b> · '+esc(d.name)+
+       ' — <span style="color:var(--ink-3)">'+esc(d.passReason||'사유 미기재')+'</span></div>';
+   }).join(''):'<div class="empty">아직 PASS한 안건이 없습니다.</div>')+'</div>';
+  return h;
+}
+
+/* 백업 */
+
+function mergeJSON(el){
+  var f=el.files[0]; if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    var o;
+    try{o=JSON.parse(r.result);}catch(e){alert('JSON 파일을 읽을 수 없습니다.');el.value='';return;}
+    var list=o.deals; if(!list||!list.length){alert('안건이 들어 있지 않은 파일입니다.');el.value='';return;}
+    var have={},haveName={};
+    S.deals.forEach(function(d){ if(d.listingId)have[d.listingId]=1; haveName[d.name]=1; });
+    var add=0,skip=0,newsec=0;
+    list.forEach(function(x){
+      if((x.listingId&&have[x.listingId])||haveName[x.name]){skip++;return;}
+      var d={}; for(var k in x){ if(k.charAt(0)!=='_')d[k]=x[k]; }
+      d.id=++S.seq; d.status='신규'; d.created=today(); d.checks={};
+      d.flags=d.flags||[]; d.hold=d.hold||5;
+      d.logs=[{t:today(),m:(x.source||'수집')+' 자동 수집으로 등록'}];
+      if(d.industry&&!S.sectors[d.industry]){
+        S.sectors[d.industry]={listed:'',band:'',lic:'',people:'',hidden:'',q:[]}; newsec++;
+      }
+      S.deals.push(d); add++;
+      if(d.listingId)have[d.listingId]=1; haveName[d.name]=1;
+    });
+    save(); el.value='';
+    alert('신규 '+add+'건을 등록했습니다.\n중복으로 건너뛴 안건 '+skip+'건.'+
+      (newsec?'\n새 업종 모듈 '+newsec+'개가 만들어졌습니다 — 업종 라이브러리에서 채워주십시오.':''));
+    go('list');
+  };
+  r.readAsText(f);
+}
+function exportJSON(){
+  var b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download='ma_radar_'+today().replace(/-/g,'')+'.json';a.click();
+  toast('백업 파일을 내려받았습니다');
+}
+function importJSON(el){
+  var f=el.files[0];if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    try{var o=JSON.parse(r.result);
+      if(!o.deals)throw 0;
+      if(!confirm('현재 데이터를 불러온 파일로 교체합니다. 진행할까요?'))return;
+      S=o;save();go('list');toast('불러왔습니다');
+    }catch(e){alert('이 파일은 읽을 수 없습니다. Deal Radar가 내보낸 JSON 파일인지 확인해 주세요.');}
+  };
+  r.readAsText(f);el.value='';
+}
+
+render();
+</script>
+</body>
+</html>

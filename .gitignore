@@ -1,0 +1,17 @@
+# Deal Radar 백업 — 판단 메모·실명·IM 내용이 들어갑니다. 절대 커밋 금지
+ma_radar_*.json
+deal_radar_*.json
+backup*.json
+
+# 수집 결과 — Actions Artifacts로만 받습니다
+jfc_import_*.json
+
+# 작업 파일
+*.csv
+*.xlsx
+*.log
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+venv/
