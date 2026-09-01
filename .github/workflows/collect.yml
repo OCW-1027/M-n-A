@@ -26,7 +26,7 @@ jobs:
         continue-on-error: true
 
       - name: 중개사 공개 안건 수집
-        run: python3 collect_platforms.py --pages 3 --min-rev 10000 --out data/latest_platforms.json
+        run: python3 collect_platforms.py --pages 3 --min-rev 0 --out data/latest_platforms.json
         continue-on-error: true
 
       - name: 수집 결과 확인
