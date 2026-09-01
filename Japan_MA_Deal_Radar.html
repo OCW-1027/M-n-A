@@ -532,17 +532,21 @@ function nav(){
   }).join('');
 }
 function stateKey(){return VIEW+(VIEW==='deal'&&CUR!=null?':'+CUR:'')+(VIEW==='intake'?':'+IMODE:'');}
+var SCROLLPOS={};
 function pushView(replace){
-  var st={v:VIEW,c:CUR,m:IMODE};
+  var st={v:VIEW,c:CUR,m:IMODE,f:JSON.stringify(FILT)};
   var h='#'+stateKey();
   try{ history[replace?'replaceState':'pushState'](st,'',h); }catch(e){}
 }
-function go(v,noPush){VIEW=v;CUR=null;render();if(!noPush)pushView();}
+function saveScroll(){ try{SCROLLPOS[stateKey()]=window.scrollY||document.documentElement.scrollTop||0;}catch(e){} }
+function go(v,noPush){saveScroll();VIEW=v;CUR=null;render();if(!noPush)pushView();}
 function applyState(st){
   if(!st)return false;
+  saveScroll();
   VIEW=st.v||'intake'; CUR=(st.c==null?null:st.c); if(st.m)IMODE=st.m;
+  if(st.f){ try{FILT=JSON.parse(st.f);}catch(e){} }
   if(VIEW==='deal'&&!S.deals.some(function(d){return d.id===CUR;}))VIEW='list';
-  render(); return true;
+  render(true); return true;
 }
 window.addEventListener('popstate',function(e){
   if(!applyState(e.state)){
@@ -554,12 +558,13 @@ window.addEventListener('popstate',function(e){
     render();
   }
 });
-function render(){
+function render(restore){
   _SC={};
   try{
     nav();
     document.getElementById('main').innerHTML=({intake:vIntake,pipe:vPipe,list:vList,sector:vSector,stats:vStats,deal:vDeal})[VIEW]();
-    window.scrollTo(0,0);
+    var y=restore?(SCROLLPOS[stateKey()]||0):0;
+    if(y){ requestAnimationFrame(function(){window.scrollTo(0,y);}); } else window.scrollTo(0,0);
   }catch(e){
     document.getElementById('main').innerHTML='<div class="head"><div><h2>화면을 그리는 중 문제가 생겼습니다</h2>'+
      '<p>저장된 데이터가 손상된 것 같습니다. 아래 버튼으로 복구하면 안건은 유지하고 구조만 다시 맞춥니다.</p></div></div>'+
@@ -823,38 +828,105 @@ function vPipe(){
 }
 
 /* 목록 */
+var FILT={ind:'',pref:'',src:'',track:'',status:'',flag:'',q:'',onlyRated:false};
+function filtered(){
+  var q=(FILT.q||'').toLowerCase();
+  return S.deals.filter(function(d){
+    if(FILT.ind&&d.industry!==FILT.ind)return false;
+    if(FILT.pref&&d.pref!==FILT.pref)return false;
+    if(FILT.src&&d.source!==FILT.src)return false;
+    if(FILT.track&&track(d)!==FILT.track)return false;
+    if(FILT.status&&d.status!==FILT.status)return false;
+    if(FILT.flag==='kill'&&!hasKill(d))return false;
+    if(FILT.flag==='warn'&&!hasWarn(d))return false;
+    if(FILT.flag==='clean'&&(hasKill(d)||hasWarn(d)))return false;
+    if(FILT.onlyRated&&!askOP(d))return false;
+    if(q){
+      var hay=((d.name||'')+' '+(d.industry||'')+' '+(d.pref||'')+' '+(d.listingId||'')+' '+(d.raw||'').slice(0,400)).toLowerCase();
+      if(hay.indexOf(q)<0)return false;
+    }
+    return true;
+  });
+}
+function uniq(fn){
+  var m={};S.deals.forEach(function(d){var v=fn(d);if(v)m[v]=(m[v]||0)+1;});
+  return Object.keys(m).sort(function(a,b){return m[b]-m[a];}).map(function(k){return [k,m[k]];});
+}
+function fsel(key,label,opts,cur){
+  return '<div><label class="f">'+label+'</label><select onchange="setFilt(\''+key+'\',this.value)">'+
+   '<option value="">전체</option>'+
+   opts.map(function(o){var v=o[0],n=o[1];
+     return '<option value="'+esc(v)+'"'+(cur===v?' selected':'')+'>'+esc(v)+' ('+n+')</option>';}).join('')+
+   '</select></div>';
+}
+function setFilt(k,v){FILT[k]=v;SCROLLPOS[stateKey()]=0;render();pushView(true);}
+/* 필터는 replaceState 로만 기록해 뒤로가기가 필터 변경 하나하나를 되짚지 않게 한다 */
+function clearFilt(){FILT={ind:'',pref:'',src:'',track:'',status:'',flag:'',q:'',onlyRated:false};render();pushView(true);}
+function setQ(v){FILT.q=v;render();pushView(true);var el=document.getElementById('fq');if(el){el.focus();el.setSelectionRange(v.length,v.length);}}
+
 function vList(){
-  var ds=S.deals.slice();
+  var ds=filtered();
   ds.sort(function(a,b){
     var k=SORT.k,va,vb;
-    if(k==='score'){va=score(a).pct;vb=score(b).pct;}
+    if(k==='score'){va=score(a).pct*(score(a).fill<50?0:1);vb=score(b).pct*(score(b).fill<50?0:1);}
     else if(k==='ratio'){va=askOP(a)||999;vb=askOP(b)||999;}
     else {va=a[k];vb=b[k];}
     if(va==null)va=SORT.d<0?-Infinity:Infinity; if(vb==null)vb=SORT.d<0?-Infinity:Infinity;
     return va>vb?SORT.d:va<vb?-SORT.d:0;
   });
-  var h='<div class="head"><div><h2>딜 목록</h2><p>제목을 눌러 정렬합니다. 1억엔 미만은 볼트온 트랙으로 자동 분류되며, 지금 PASS해도 나중에 플랫폼이 정해지면 후보 풀이 됩니다.</p></div>'+
-   '<button class="primary" onclick="go(\'intake\')">안건 추가</button></div><div class="panel"><table><thead><tr>'+
-   [['name','안건'],['industry','업종'],['ask','희망가'],['ratio','배수'],['track','트랙'],['score','점수'],['status','상태']]
+  var active=['ind','pref','src','track','status','flag','q'].some(function(k){return FILT[k];})||FILT.onlyRated;
+
+  var h='<div class="head"><div><h2>딜 목록</h2>'+
+   '<p>업종·지역·소스로 좁혀서 보십시오. 제목을 누르면 정렬합니다. 딜을 열었다가 뒤로 오면 보던 위치로 돌아옵니다.</p></div>'+
+   '<button class="primary" onclick="go(\'intake\')">안건 추가</button></div>';
+
+  h+='<div class="panel" style="margin-bottom:14px"><div class="grid4">'+
+    fsel('ind','업종',uniq(function(d){return d.industry;}),FILT.ind)+
+    fsel('pref','지역',uniq(function(d){return d.pref;}),FILT.pref)+
+    fsel('src','소스',uniq(function(d){return d.source;}),FILT.src)+
+    fsel('status','단계',uniq(function(d){return d.status;}),FILT.status)+
+   '</div><div class="grid4" style="margin-top:12px">'+
+    '<div><label class="f">트랙</label><select onchange="setFilt(\'track\',this.value)">'+
+      ['','메인','볼트온','미정'].map(function(t){return '<option value="'+t+'"'+(FILT.track===t?' selected':'')+'>'+(t||'전체')+'</option>';}).join('')+'</select></div>'+
+    '<div><label class="f">플래그</label><select onchange="setFilt(\'flag\',this.value)">'+
+      [['','전체'],['clean','플래그 없음'],['warn','주의'],['kill','즉시 탈락']].map(function(o){
+        return '<option value="'+o[0]+'"'+(FILT.flag===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select></div>'+
+    '<div><label class="f">검색 (이름·업종·원문)</label><input id="fq" value="'+esc(FILT.q)+'" placeholder="半導体, ロボット, 空港…" onchange="setQ(this.value)"></div>'+
+    '<div style="display:flex;align-items:flex-end;gap:8px">'+
+      '<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-2);cursor:pointer">'+
+      '<input type="checkbox"'+(FILT.onlyRated?' checked':'')+' onchange="setFilt(\'onlyRated\',this.checked)" style="width:15px;height:15px;accent-color:var(--cyan)">배수 있는 건만</label>'+
+      (active?'<button class="ghost" onclick="clearFilt()">초기화</button>':'')+'</div>'+
+   '</div>'+
+   '<div style="margin-top:11px;font-size:12.5px;color:var(--ink-2)">'+
+     '<span class="num" style="color:var(--cyan);font-size:15px">'+ds.length+'</span>건'+
+     (active?' <span style="color:var(--ink-3)">/ 전체 '+S.deals.length+'건</span>':'')+
+   '</div></div>';
+
+  h+='<div class="panel"><table><thead><tr>'+
+   [['name','안건'],['industry','업종'],['pref','지역'],['ask','희망가'],['ratio','배수'],['track','트랙'],['score','점수'],['status','상태']]
    .map(function(c){return '<th'+(['ask','ratio','score'].indexOf(c[0])>=0?' class="r"':'')+' onclick="sortBy(\''+c[0]+'\')">'+c[1]+(SORT.k===c[0]?(SORT.d>0?' ↑':' ↓'):'')+'</th>';}).join('')+
    '</tr></thead><tbody>';
-  h+=ds.map(function(d){
-    var s=score(d),g=grade(s.pct,s.fill),r=askOP(d);
+  h+=ds.slice(0,400).map(function(d){
+    var sc=score(d),g=grade(sc.pct,sc.fill),r=askOP(d);
     return '<tr onclick="openDeal('+d.id+')"><td>'+esc(d.name)+
       (hasKill(d)?' <span class="b b-ro">킬</span>':hasWarn(d)?' <span class="b b-am">주의</span>':'')+'</td>'+
       '<td style="color:var(--ink-2);font-size:12.5px">'+esc(d.industry||'—')+'</td>'+
+      '<td style="color:var(--ink-2);font-size:12.5px">'+esc(d.pref||'—')+'</td>'+
       '<td class="r num">'+fmt(d.ask)+'</td>'+
       '<td class="r num">'+(r?fmtP(r,1):'<span style="color:var(--ink-3)">—</span>')+'</td>'+
       '<td><span class="b '+(track(d)==='메인'?'b-cy':'b-gy')+'">'+track(d)+'</span></td>'+
-      '<td class="r"><span class="b '+g.c+'">'+g.g+'</span> <span class="num" style="color:var(--ink-2)">'+(s.fill<50?'':s.pct)+'</span></td>'+
+      '<td class="r"><span class="b '+g.c+'">'+g.g+'</span> <span class="num" style="color:var(--ink-2)">'+(sc.fill<50?'':sc.pct)+'</span></td>'+
       '<td style="font-size:12.5px;color:var(--ink-2)">'+esc(d.status)+'</td></tr>';
   }).join('');
-  return h+'</tbody></table>'+(ds.length?'':'<div class="empty">등록된 안건이 없습니다.</div>')+'</div>';
+  h+='</tbody></table>';
+  if(!ds.length)h+='<div class="empty">조건에 맞는 안건이 없습니다.</div>';
+  else if(ds.length>400)h+='<div style="padding:12px;font-size:12.5px;color:var(--ink-3);text-align:center">상위 400건만 표시합니다. 필터로 좁혀 주십시오.</div>';
+  return h+'</div>';
 }
 function sortBy(k){if(SORT.k===k)SORT.d=-SORT.d;else{SORT.k=k;SORT.d=-1;}render();}
 
 /* 딜 상세 */
-function openDeal(id){CUR=id;VIEW='deal';render();pushView();}
+function openDeal(id){saveScroll();CUR=id;VIEW='deal';render();pushView();}
 function vDeal(){
   var d=S.deals.filter(function(x){return x.id===CUR;})[0];
   if(!d)return '<div class="empty">딜을 찾을 수 없습니다.</div>';
@@ -864,7 +936,8 @@ function vDeal(){
   var done=qs.filter(function(q){return d.checks[q];}).length;
 
   var h='<div class="head"><div><h2>'+esc(d.name)+'</h2><p>'+
-    [d.industry,d.pref,d.source,d.dealType].filter(Boolean).map(esc).join(' · ')+
+    (d.industry?'<a href="#" onclick="showIndustry(\''+esc(d.industry)+'\');return false" style="text-decoration:none">'+esc(d.industry)+'</a> · ':'')+
+    [d.pref,d.source,d.dealType].filter(Boolean).map(esc).join(' · ')+
     (d.url?' · <a href="'+esc(d.url)+'" target="_blank" rel="noopener">원문</a>':'')+'</p></div>'+
     '<div class="row"><button class="ghost" onclick="editDeal('+d.id+')">수정</button>'+
     '<button class="danger" onclick="delDeal('+d.id+')">삭제</button></div></div>';
@@ -995,11 +1068,17 @@ function vSector(){
       '<dt>목표 밴드</dt><dd class="num" style="color:var(--cyan)">'+esc(s.band)+'</dd>'+
       '<dt>허가</dt><dd style="font-size:12.5px;color:var(--ink-2)">'+esc(s.lic)+'</dd>'+
       '<dt>확인 항목</dt><dd class="num">'+(s.q||[]).length+'개</dd></dl>'+
-      '<div class="row" style="margin-top:11px"><button onclick="editSector(\''+esc(k)+'\')">수정</button></div></div>';
+      '<div class="row" style="margin-top:11px"><button onclick="editSector(\''+esc(k)+'\')">수정</button>'+
+      (n?'<button class="primary" onclick="showIndustry(\''+esc(k)+'\')">'+n+'건 보기</button>':'')+'</div></div>';
   }).join('')+'</div>';
   h+='<div id="sedit"></div>';
   return h;
 }
+function showIndustry(k){
+  clearFiltSilent(); FILT.ind=k; SORT={k:'ratio',d:1};
+  saveScroll(); VIEW='list'; CUR=null; render(); pushView();
+}
+function clearFiltSilent(){FILT={ind:'',pref:'',src:'',track:'',status:'',flag:'',q:'',onlyRated:false};}
 function editSector(k){
   var s=S.sectors[k]||{listed:'',band:'',lic:'',people:'',hidden:'',q:[]};
   document.getElementById('sedit').innerHTML='<div class="sect">'+(k?'업종 수정':'업종 추가')+'</div><div class="panel">'+
@@ -1043,7 +1122,7 @@ function vStats(){
     var a=by[k].slice().sort(function(x,y){return x-y;});
     var med=a[Math.floor(a.length/2)];
     var band=S.sectors[k]?S.sectors[k].band:'';
-    h+='<div class="hbar"><span class="t">'+esc(k)+'</span><span class="g"><i style="width:'+Math.min(100,med/10*100)+'%"></i></span>'+
+    h+='<div class="hbar" style="cursor:pointer" onclick="showIndustry(\''+esc(k)+'\')"><span class="t">'+esc(k)+'</span><span class="g"><i style="width:'+Math.min(100,med/10*100)+'%"></i></span>'+
       '<span class="num" style="width:110px;text-align:right">중앙값 '+fmtP(med,1)+'</span>'+
       '<span style="width:96px;color:var(--ink-3);font-size:11.5px">'+(band?'목표 '+esc(band):'')+'</span>'+
       '<span class="num" style="color:var(--ink-3);width:34px;text-align:right">'+a.length+'건</span></div>';
