@@ -1083,20 +1083,26 @@ var FEEDS=['data/latest_platforms.json','data/latest_jfc.json'];
 function syncNow(silent){
   var btn=document.getElementById('syncbtn');
   if(btn){btn.disabled=true;btn.textContent='확인 중…';}
-  var added=0, skipped=0, newsec=0, done=0, stamp='';
+  var added=0, skipped=0, newsec=0, done=0, stamp='', okFeeds=0, failFeeds=0;
   var have={},haveName={};
   S.deals.forEach(function(d){ if(d.listingId)have[d.source+':'+d.listingId]=1; haveName[d.name]=1; });
   function finish(){
     if(added||newsec)save();
     if(btn){btn.disabled=false;btn.textContent='새 안건 확인';}
-    try{localStorage.setItem('ma_radar_lastsync',today());}catch(e){}
+    /* 수신에 실제로 성공했을 때만 오늘 확인한 것으로 기록한다.
+       파일이 아직 없어서 실패한 날을 '확인 완료'로 남기면 영영 다시 시도하지 않는다. */
+    if(okFeeds){ try{localStorage.setItem('ma_radar_lastsync',today());}catch(e){} }
     if(added){ toast('신규 '+added+'건을 받았습니다'); go('list'); }
-    else if(!silent){ toast('새 안건이 없습니다 (중복 '+skipped+'건 확인)'); render(); }
-    else render();
+    else if(!silent){
+      toast(okFeeds ? '새 안건이 없습니다 (중복 '+skipped+'건 확인)'
+                    : '수집 파일을 찾지 못했습니다 — 워크플로가 돌았는지 확인해 주십시오');
+      render();
+    } else render();
   }
   FEEDS.forEach(function(f){
     fetch(f+'?t='+Date.now()).then(function(r){return r.ok?r.json():null;}).then(function(o){
       if(o&&Array.isArray(o.deals)){
+        okFeeds++;
         if(o.collected&&o.collected>stamp)stamp=o.collected;
         o.deals.forEach(function(x){
           var key=(x.source||'')+':'+(x.listingId||'');
@@ -1110,7 +1116,7 @@ function syncNow(silent){
           if(d.listingId)have[key]=1; haveName[d.name]=1;
         });
       }
-    }).catch(function(){}).then(function(){ if(++done===FEEDS.length)finish(); });
+    }).catch(function(){failFeeds++;}).then(function(){ if(++done===FEEDS.length)finish(); });
   });
 }
 function autoSync(){
