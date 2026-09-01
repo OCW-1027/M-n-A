@@ -351,32 +351,43 @@ function grade(p,f){
 }
 
 /* ─────────── 파서 ─────────── */
-function z2h(s){return s.replace(/[０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-65248);}).replace(/，/g,',').replace(/～|〜/g,'~');}
+function z2h(s){return s.replace(/[０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-65248);}).replace(/，/g,',').replace(/～|〜|ー|―/g,'~');}
 function yen(str){
   if(!str)return null;
-  var s=z2h(str).replace(/,/g,'').replace(/\s/g,'');
-  var m=s.match(/([\d.]+)億([\d.]+)?万?/);
-  if(m)return Math.round(parseFloat(m[1])*10000+(m[2]?parseFloat(m[2]):0));
-  m=s.match(/([\d.]+)億/); if(m)return Math.round(parseFloat(m[1])*10000);
-  m=s.match(/([\d.]+)万/); if(m)return Math.round(parseFloat(m[1]));
-  m=s.match(/([\d.]+)円/); if(m)return Math.round(parseFloat(m[1])/10000);
-  m=s.match(/^([\d.]+)$/); if(m)return Math.round(parseFloat(m[1]));
-  return null;
+  var s=z2h(str).replace(/,/g,'').replace(/\s/g,'').replace(/約|およそ|概算|[（(].*?[)）]/g,'');
+  var neg=/^[▲△\-−]/.test(s); s=s.replace(/^[▲△\-−]/,'');
+  var v=null,m;
+  if(m=s.match(/([\d.]+)億([\d.]+)千万/)) v=parseFloat(m[1])*10000+parseFloat(m[2])*1000;
+  else if(m=s.match(/([\d.]+)億([\d.]+)万/)) v=parseFloat(m[1])*10000+parseFloat(m[2]);
+  else if(m=s.match(/([\d.]+)億/))    v=parseFloat(m[1])*10000;
+  else if(m=s.match(/([\d.]+)千万/))  v=parseFloat(m[1])*1000;
+  else if(m=s.match(/([\d.]+)百万/))  v=parseFloat(m[1])*100;
+  else if(m=s.match(/([\d.]+)万/))    v=parseFloat(m[1]);
+  else if(m=s.match(/([\d.]+)円/))    v=parseFloat(m[1])/10000;
+  else if(m=s.match(/^([\d.]+)$/))    v=parseFloat(m[1]);
+  if(v==null)return null;
+  if(/未満|以下/.test(s))v=v*0.75;
+  if(/以上|超/.test(s))v=v*1.25;
+  return Math.round(neg?-v:v);
 }
 function rangeMid(str){
   if(!str)return null;
   var s=z2h(str);
-  var parts=s.split(/~|ー|―|-|から/);
+  if(/非公開|応相談|要相談|^-+$/.test(s.replace(/\s/g,'')))return null;
+  var parts=s.split(/~|から/);
   if(parts.length>=2){
-    var a=yen(parts[0]),b=yen(parts[1]);
+    var unit='';
+    ['億','千万','百万','万'].some(function(u){ if(parts[1].indexOf(u)>=0){unit=u;return true;} });
+    var a=yen(/[億万円]/.test(parts[0])?parts[0]:parts[0]+unit), b=yen(parts[1]);
     if(a!=null&&b!=null)return Math.round((a+b)/2);
-    return a!=null?a:b;
+    return b!=null?b:a;
   }
   return yen(s);
 }
+var REGIONS=['中部・北陸','中国・四国','九州・沖縄','甲信越','北海道','東北','関東','東海','近畿','関西','北陸','中部','中国','四国','九州','沖縄'];
 function grab(text,keys){
   for(var i=0;i<keys.length;i++){
-    var re=new RegExp(keys[i]+'[^0-9０-９]{0,12}([0-9０-９.,]+\\s*[億万円]?[^\\n]{0,24})');
+    var re=new RegExp(keys[i]+'[^0-9０-９▲△]{0,12}([▲△]?[0-9０-９.,]+\\s*[億万百千円]{0,3}[^\\n]{0,24})');
     var m=text.match(re);
     if(m)return m[1];
   }
@@ -398,16 +409,32 @@ function guessIndustry(t){
   for(var i=0;i<IND_MAP.length;i++){ if(t.indexOf(IND_MAP[i][0])>=0) return IND_MAP[i][1]; }
   return '';
 }
+var BOILER=/^(お問い合わせ|詳細を?見る|続きを読む|検索|一覧|もっと見る|NEW|新着|会員登録|ログイン|前へ|次へ|お気に入り|この案件|無料|相談|閲覧数|交渉|公開日|更新日|スキーム|財務内容|事業内容|PL項目|BS項目|案件No)/;
+var LABEL=/^(所在地|スキーム|営業利益|従業員数|概算売上|売上高|希望金額|純資産|譲渡理由|業種|地域|エリア|価格|従業員|財務内容|事業内容|譲渡対象|交渉対象)/;
+var VALUEISH=/^(後継者不在|選択と集中|企業の成長と発展のため|企業再生|事業再生|非公開|応相談|株式譲渡|事業譲渡|関東|関西|近畿|東海|東北|北陸|中部|中国|四国|九州|沖縄|北海道|甲信越)/;
 function guessName(t){
-  var ls=t.split(/\n/);
+  var ls=t.split(/\n/), cands=[], hitLabel=false;
   for(var i=0;i<ls.length;i++){
-    var l=ls[i].replace(/^[\s\u30fb・|【\[#*>-]+/,'').replace(/[】\]]+$/,'').trim();
-    if(l.length<5||l.length>70)continue;
-    if(/^(売上|年商|営業利益|EBITDA|譲渡|希望|従業員|所在地|エリア|地域|価格|案件|業種|株式譲渡|事業譲渡)/.test(l))continue;
-    if(/^[0-9,.\s億万円~ー-]+$/.test(l))continue;
-    return l.slice(0,60);
+    var raw0=(ls[i]||'').trim();
+    if(LABEL.test(raw0)){ if(cands.length){hitLabel=true;break;} continue; }
+    if(VALUEISH.test(raw0))continue;
+    if(i>0&&LABEL.test((ls[i-1]||'').trim()))continue;
+    var l=raw0.replace(/^[\s\u30fb・|#*>◎■●-]+/,'')
+              .replace(/^[【\[]([^】\]]{1,12})[】\]]\s*/,'')
+              .replace(/[】\]]+$/,'').trim();
+    if(l.length<2||l.length>70)continue;
+    if(BOILER.test(l))continue;
+    if(/^(売上|年商|営業利益|EBITDA|譲渡|希望|従業員|所在地|エリア|地域|価格|業種|株式譲渡|事業譲渡|純資産|現金|有利子|概算|法人|個人|非公開|応相談)/.test(l))continue;
+    if(/^[0-9,.\s億万百千円~ー名人-]+$/.test(l))continue;
+    if(/^[▲△]?[0-9,.]+\s*[億万百千]?円/.test(l))continue;
+    if(/[：:]\s*[▲△約]?[0-9]/.test(l))continue;
+    cands.push(l);
+    if(cands.length>=4)break;
   }
-  return (t.trim().split(/\n/)[0]||'무제').slice(0,60);
+  if(!cands.length)return '무제';
+  /* 라벨 블록 직전 줄이 대개 구체 사업명 (그 앞은 업종 대분류) */
+  var n = hitLabel ? cands[cands.length-1] : cands[0];
+  return n.slice(0,60);
 }
 function isDup(o){
   for(var i=0;i<S.deals.length;i++){
@@ -421,11 +448,26 @@ function isDup(o){
 function splitBlocks(t,sep){
   var b;
   if(sep==='dash')b=t.split(/^\s*[-=*_]{3,}\s*$/m);
-  else if(sep==='case')b=t.split(/(?=案件\s*(?:No|番号|ID))/);
-  else b=t.split(/\n\s*\n/);
+  else if(sep==='blank')b=t.split(/\n\s*\n/);
+  else b=autoSplit(t);
   return b.map(function(x){return x.trim();}).filter(function(x){return x.length>=20;});
 }
-
+function autoSplit(t){
+  var re=/案件\s*(?:No|番号|ID)[^\n]*/g, ms=[], m;
+  while((m=re.exec(t))!==null)ms.push({i:m.index,end:m.index+m[0].length});
+  if(ms.length<2)return t.split(/\n\s*\n/);
+  /* 첫 마커 앞에 이미 안건 내용이 있으면 마커가 블록 끝에 오는 구조 */
+  var head=t.slice(0,ms[0].i);
+  var tail = head.length>60 && /売上|営業利益|希望|譲渡|所在地/.test(head);
+  var out=[],prev=0;
+  ms.forEach(function(x){
+    var cut = tail ? x.end : x.i;
+    if(cut>prev){ var seg=t.slice(prev,cut); if(!tail&&out.length===0&&seg.trim().length<20){prev=cut;return;} out.push(seg); }
+    prev=cut;
+  });
+  if(prev<t.length)out.push(t.slice(prev));
+  return out;
+}
 function grabUrl(t){
   var m=t.match(/https?:\/\/[^\s"'<>\)\]]+/);
   return m?m[0].replace(/[.,]$/,''):'';
@@ -446,22 +488,28 @@ function srcUrl(src,no,t){
 }
 function parseListing(t){
   var o={},T=t;
-  o.rev=rangeMid(grab(T,['売上高','年商','売上']));
-  o.op=rangeMid(grab(T,['営業利益']));
-  o.ebitda=rangeMid(grab(T,['修正EBITDA','実態EBITDA','EBITDA','償却前利益']));
-  o.ask=rangeMid(grab(T,['譲渡希望価格','希望譲渡価格','譲渡価格','希望価格','売却希望価格']));
-  o.cash=rangeMid(grab(T,['現預金','現金']));
-  o.debt=rangeMid(grab(T,['有利子負債','借入金']));
-  o.netAssets=rangeMid(grab(T,['純資産']));
-  var em=z2h(T).match(/従業員[^0-9]{0,8}([0-9]+)/); if(em)o.emp=parseInt(em[1]);
+  o.rev=rangeMid(grab(T,['概算売上','売上高','年商','売上']));
+  o.op=rangeMid(grab(T,['調整後営業利益','修正後営業利益','修正営業利益','営業利益']));
+  o.ebitda=rangeMid(grab(T,['調整後EBITDA','修正後EBITDA','修正EBITDA','実態EBITDA','調整後EVITDA','EBITDA','償却前利益']));
+  o.ask=rangeMid(grab(T,['譲渡希望価格','希望譲渡価格','希望金額','譲渡価格','希望価格','売却希望価格','譲渡対価','譲渡金額']));
+  o.cash=rangeMid(grab(T,['現金及び現金同等物','現金・現金同等物','現金同等物','現金・預金等','現預金','現金']));
+  o.debt=rangeMid(grab(T,['ネット有利子負債','有利子負債等','有利子負債','借入金額','借入金']));
+  o.netAssets=rangeMid(grab(T,['調整後純資産','修正後純資産','修正後時価純資産','想定時価純資産','想定純資産','時価純資産','簿価純資産','純資産']));
+  var nc=rangeMid(grab(T,['ネットキャッシュ']));
+  if(nc!=null&&nc>0&&o.cash==null&&o.debt==null){o.cash=nc;o.debt=0;}
+  var em=z2h(T).match(/従業員[^0-9]{0,10}([0-9]+)/); if(em)o.emp=parseInt(em[1]);
   for(var i=0;i<PREFS.length;i++){if(T.indexOf(PREFS[i])>=0){o.pref=PREFS[i];break;}}
+  if(!o.pref){for(var j=0;j<REGIONS.length;j++){if(T.indexOf(REGIONS[j])>=0){o.pref=REGIONS[j];break;}}}
   o.dealType = T.indexOf('事業譲渡')>=0 ? '事業譲渡' : (T.indexOf('株式譲渡')>=0?'株式譲渡':'');
   if(/後継者/.test(T))o.reason='후계자 부재';
   else if(/選択と集中|事業再編|カーブアウト/.test(T))o.reason='사업 재편';
+  else if(/成長と発展/.test(T))o.reason='성장·발전';
+  else if(/企業再生|事業再生/.test(T))o.reason='기업 재생';
   else if(/引退|高齢/.test(T))o.reason='오너 은퇴';
   var flags=[];
   if(/1円|一円/.test(z2h(T)))flags.push('1엔 매각');
   if(/債務超過/.test(T))flags.push('채무초과');
+  if(o.netAssets!=null&&o.netAssets<0&&flags.indexOf('채무초과')<0)flags.push('채무초과');
   o.flags=flags;
   o.listingId=grabNo(T);
   o.raw=T.trim();
@@ -506,8 +554,6 @@ function hardReset(){
 }
 function toast(m){var d=document.createElement('div');d.className='toast';d.textContent=m;document.body.appendChild(d);setTimeout(function(){d.remove();},2200);}
 
-/* 안건 입력 */
-
 var ROUTES=[
  {g:'매일 — 신착만 훑기 (10분)', note:'新着順으로 정렬하고 앞 1~2페이지만 봅니다. 전체를 다 볼 필요 없습니다.', items:[
   {n:'BATONZ 売り案件一覧', u:'https://batonz.jp/sell_cases/', d:'국내 최대 규모. 정렬을 新着順으로 바꾸고 상위 2페이지. 비회원은 재무 정보가 가려집니다', t:'회원 등록 권장'},
@@ -515,18 +561,18 @@ var ROUTES=[
   {n:'TRANBI — 株式譲渡만', u:'https://www.tranbi.com/buy/list/property/1/', d:'사업양도를 걸러낸 주식양도 안건만. 법인 인수는 여기부터', t:''},
   {n:'TRANBI — 값 내린 안건', u:'https://www.tranbi.com/buy/list/?type=price_down', d:'가격을 내렸다는 것은 협상 여지가 있다는 신호입니다', t:'노림수'}
  ]},
- {g:'주 2~3회 — 중견 안건 (15분)', note:'규모가 크고 정보 품질이 높은 쪽. 메인 트랙 플랫폼 후보는 대부분 여기서 나옵니다.', items:[
-  {n:'M&Aキャピタルパートナーズ 譲渡案件', u:'https://www.ma-cp.com/deal/', d:'調整後EBITDA·ネットキャッシュ·時価純資産까지 공개. 정보 품질이 가장 좋습니다. 여기부터 보십시오', t:'최우선'},
-  {n:'日本M&Aセンター 案件一覧', u:'https://www.nihon-ma.co.jp/anken/needs_convey.php', d:'2,200건대. 전속 안건 중심이라 매도 의사가 확실합니다', t:''},
+ {g:'주 2~3회 — 중견 안건 (15분)', note:'규모가 크고 정보 품질이 높은 쪽. 메인 트랙 플랫폼 후보는 대부분 여기서 나옵니다. 목록 페이지를 Ctrl+A로 통째 복사해 [목록 일괄]에 붙여넣으십시오.', items:[
+  {n:'M&Aキャピタルパートナーズ 譲渡案件 (487건)', u:'https://www.ma-cp.com/deal/', d:'調整後EBITDA·ネットキャッシュ·時価純資産까지 공개. 한 페이지 20건씩 5페이지. 여기부터 보십시오', t:'최우선'},
+  {n:'日本M&Aセンター 案件一覧 (2,200건)', u:'https://www.nihon-ma.co.jp/anken/needs_convey.php', d:'전속 안건 중심이라 매도 의사가 확실합니다. 30건씩 74페이지', t:''},
   {n:'ストライク SMART 全案件', u:'https://www.strike.co.jp/smart/search/', d:'제조·건설·B2B 비중이 높고 무차입 우량기업이 자주 나옵니다', t:'제조업 강함'},
   {n:'M&Aサクシード 案件一覧', u:'https://www.ma-succeed.jp/project', d:'법인 한정 플랫폼. 조건 검색은 아래 링크', t:'법인 전용'},
   {n:'M&Aサクシード 条件検索', u:'https://www.ma-succeed.jp/buy/search', d:'업종·지역·가격대를 미리 걸어두고 저장해 쓰십시오', t:''}
  ]},
- {g:'자동 수집 — 손댈 필요 없음', note:'공공기관 공개 데이터라 규약상 자동 수집이 가능합니다. collect_jfc.py가 매일 알아서 받아옵니다.', items:[
+ {g:'자동 수집 — 손댈 필요 없음', note:'공공기관 공개 데이터라 규약상 자동 수집이 가능합니다. collect_jfc.py가 매일 아침 받아옵니다.', items:[
   {n:'JFC 事業承継マッチング 検索', u:'https://www.jfc.go.jp/n/finance/jigyosyokei/matching/search/', d:'2,383건 공개. 스크립트가 CSV를 통째로 받아 조건에 맞는 것만 걸러냅니다', t:'스크립트 대상'},
   {n:'JFC 공개 CSV (원본)', u:'https://www.jfc.go.jp/n/finance/jigyosyokei/matching/search/companies.csv', d:'매출·경상이익·순자산·차입금·희망가·업력·종업원수가 전부 들어 있습니다', t:'데이터'}
  ]},
- {g:'월 1회 — 오프마켓 채널', note:'플랫폼에 올라오기 전 단계. 경쟁이 가장 적습니다.', items:[
+ {g:'월 1회 — 오프마켓', note:'플랫폼에 올라오기 전 단계. 경쟁이 가장 적습니다.', items:[
   {n:'事業承継・引継ぎ支援センター', u:'https://shoukei.smrj.go.jp/', d:'전국 47개 공적 기관. 비공개 DB를 갖고 있어 직접 상담이 필요합니다', t:'상담 필요'},
   {n:'中小企業庁 事業承継', u:'https://www.chusho.meti.go.jp/zaimu/shoukei/index.html', d:'등록 M&A 업체 목록과 가이드라인. 중개사를 고를 때 여기서 확인', t:'중개사 검증'},
   {n:'relay (사업승계 플랫폼)', u:'https://relay.town/', d:'실명 공개형. 지자체 연계 안건이 많습니다', t:''}
@@ -552,7 +598,6 @@ function vRoute(){
    '<div class="row" style="margin-top:12px"><button class="primary" onclick="document.getElementById(\'imp\').click()">수집 파일 불러오기</button></div></div>';
   return h;
 }
-
 var IMODE='single', BULK=[];
 function vIntake(){
   var tab=function(k,l){return '<button class="'+(IMODE===k?'primary':'ghost')+'" onclick="IMODE=\''+k+'\';render()">'+l+'</button>';};
@@ -564,7 +609,7 @@ function vIntake(){
   if(IMODE==='bulk')return h+
    '<div class="panel"><div class="grid3">'+
     '<div><label class="f">구분 방식</label><select id="bsep">'+
-     '<option value="blank">빈 줄로 구분</option><option value="case">案件No / 案件番号로 구분</option><option value="dash">--- 구분선으로 구분</option></select></div>'+
+     '<option value="auto">자동 판정 (권장)</option><option value="blank">빈 줄로 구분</option><option value="dash">--- 구분선으로 구분</option></select></div>'+
     sel('bsrc','소스','',SOURCES)+
     '<div style="display:flex;align-items:flex-end"><button class="primary" style="width:100%" onclick="doBulk()">목록 읽기</button></div>'+
    '</div>'+
@@ -599,6 +644,7 @@ function doBulk(){
   var bl=splitBlocks(t,document.getElementById('bsep').value);
   if(!bl.length){toast('구분되는 안건을 찾지 못했습니다. 구분 방식을 바꿔보세요');return;}
   BULK=bl.map(function(b){
+    b=b.replace(/^(?:\s*(?:お問い合わせする|詳細を見る|もっと見る|お気に入り)\s*\n)+/,'').trim();
     var o=parseListing(b);
     o.name=guessName(b); o.industry=guessIndustry(b); o.source=src;
     o.url=srcUrl(src,o.listingId,b);
