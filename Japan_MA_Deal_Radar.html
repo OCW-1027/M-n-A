@@ -425,6 +425,25 @@ function splitBlocks(t,sep){
   else b=t.split(/\n\s*\n/);
   return b.map(function(x){return x.trim();}).filter(function(x){return x.length>=20;});
 }
+
+function grabUrl(t){
+  var m=t.match(/https?:\/\/[^\s"'<>\)\]]+/);
+  return m?m[0].replace(/[.,]$/,''):'';
+}
+function grabNo(t){
+  var z=z2h(t);
+  var m=z.match(/(?:案件\s*(?:No|番号|ID)|売り案件\s*No)[.\s:：]*([0-9A-Za-z\-]+)/);
+  if(m)return m[1];
+  m=z.match(/\bSS(\d{5,})\b/);
+  return m?('SS'+m[1]):'';
+}
+function srcUrl(src,no,t){
+  var u=grabUrl(t); if(u)return u;
+  if(!no)return '';
+  if(src==='BATONZ'&&/^\d+$/.test(no))return 'https://batonz.jp/sell_cases/'+no;
+  if(src==='TRANBI'&&/^\d+$/.test(no))return 'https://www.tranbi.com/buy/'+no+'/';
+  return '';
+}
 function parseListing(t){
   var o={},T=t;
   o.rev=rangeMid(grab(T,['売上高','年商','売上']));
@@ -442,7 +461,10 @@ function parseListing(t){
   else if(/引退|高齢/.test(T))o.reason='오너 은퇴';
   var flags=[];
   if(/1円|一円/.test(z2h(T)))flags.push('1엔 매각');
+  if(/債務超過/.test(T))flags.push('채무초과');
   o.flags=flags;
+  o.listingId=grabNo(T);
+  o.raw=T.trim();
   return o;
 }
 
@@ -578,7 +600,8 @@ function doBulk(){
   if(!bl.length){toast('구분되는 안건을 찾지 못했습니다. 구분 방식을 바꿔보세요');return;}
   BULK=bl.map(function(b){
     var o=parseListing(b);
-    o.name=guessName(b); o.industry=guessIndustry(b); o.source=src; o.memo=b.slice(0,600);
+    o.name=guessName(b); o.industry=guessIndustry(b); o.source=src;
+    o.url=srcUrl(src,o.listingId,b);
     o.hold=5; o.on=true; o.dup=isDup(o);
     return o;
   });
@@ -627,7 +650,7 @@ function bulkSave(){
 function doParse(){
   var t=document.getElementById('raw').value;
   if(!t.trim()){toast('본문을 붙여넣어 주세요');return;}
-  var o=parseListing(t); o.memo=t.slice(0,600);
+  var o=parseListing(t); o.url=srcUrl('',o.listingId,t);
   showForm(o);
 }
 function newBlank(){showForm({});}
@@ -681,7 +704,8 @@ function form(o,isNew){
      return '<label style="display:flex;gap:6px;align-items:center;font-size:12.5px;color:'+(KILL.indexOf(f)>=0?'var(--rose)':'var(--amber)')+'">'+
        '<input type="checkbox" class="flagbox" value="'+f+'"'+(on?' checked':'')+' style="width:15px;height:15px;accent-color:var(--cyan)">'+f+'</label>';
    }).join('')+'</div>'+
-  '<div class="sect">메모</div><textarea id="f_memo" rows="4">'+esc(o.memo||'')+'</textarea>'+
+  '<div class="sect">메모</div><textarea id="f_memo" rows="4" placeholder="내 판단·확인할 점">'+esc(o.memo||'')+'</textarea>'+
+  '<div class="sect">원문 (수집 당시 그대로)</div><textarea id="f_raw" rows="6">'+esc(o.raw||'')+'</textarea>'+
   '<div class="row" style="margin-top:14px"><button class="primary" onclick="saveForm('+(isNew?'null':o.id)+')">'+(isNew?'딜 등록':'변경 저장')+'</button>'+
   (isNew?'':'<button class="ghost" onclick="openDeal('+o.id+')">취소</button>')+'</div></div>';
 }
@@ -695,6 +719,7 @@ function saveForm(id){
     listingId:gv('listingId'),rev:gn('rev'),op:gn('op'),ebitda:gn('ebitda'),ask:gn('ask'),cash:gn('cash'),
     debt:gn('debt'),netAssets:gn('netAssets'),emp:gn('emp'),ownerDep:gv('ownerDep'),exitPath:gv('exitPath'),
     explain:gv('explain'),cap:gv('cap'),reason:gv('reason'),hold:gn('hold'),url:gv('url'),flags:flags,memo:gv('memo')};
+  var _raw=document.getElementById('f_raw'); if(_raw)o.raw=_raw.value;
   if(id==null){
     o.id=++S.seq;o.status='신규';o.created=today();o.checks={};o.logs=[{t:today(),m:'등록'}];
     S.deals.push(o);save();toast('등록했습니다');CUR=o.id;VIEW='deal';render();
@@ -789,6 +814,7 @@ function vDeal(){
     '<dt>순현금</dt><dd class="num">'+(nc==null?'<span style="color:var(--ink-3)">—</span>':fmt(nc))+'</dd>'+
     '<dt>실질 EV</dt><dd class="num">'+(ev==null?'<span style="color:var(--ink-3)">차입·현금 미확인</span>':fmt(ev))+'</dd>'+
     '<dt>종업원</dt><dd class="num">'+(d.emp==null?'—':d.emp+'명')+'</dd>'+
+    '<dt>안건번호</dt><dd class="num">'+(d.listingId?esc(d.listingId):'<span style="color:var(--ink-3)">—</span>')+'</dd>'+
     '<dt>트랙</dt><dd><span class="b '+(track(d)==='메인'?'b-cy':'b-gy')+'">'+track(d)+'</span></dd>'+
     '<dt>보유 목표</dt><dd class="num">'+(d.hold||5)+'년</dd>'+
     '</dl></div>';
@@ -838,6 +864,13 @@ function vDeal(){
   h+='</div>';
 
   /* 메모·이력 */
+  if(d.raw){
+    h+='<div class="sect">원문 <span style="color:var(--ink-3);font-size:11.5px">수집 당시 그대로</span>'+
+      (d.url?' · <a href="'+esc(d.url)+'" target="_blank" rel="noopener" style="font-size:12px">출처 열기 \u2197</a>':'')+'</div>'+
+      '<div class="panel"><div style="white-space:pre-wrap;font-size:12.5px;line-height:1.75;color:var(--ink-2);max-height:340px;overflow:auto">'+
+      esc(d.raw)+'</div>'+
+      '<div class="row" style="margin-top:11px"><button onclick="copyRaw('+d.id+')">원문 복사</button></div></div>';
+  }
   h+='<div class="grid2" style="margin-top:22px">'+
    '<div class="panel"><div class="sect" style="margin-top:0">메모</div>'+
    '<textarea id="memo" rows="8">'+esc(d.memo||'')+'</textarea>'+
@@ -868,6 +901,12 @@ function toggleCheck(id,i){
   var sec=S.sectors[d.industry];
   var qs=COMMON_Q.concat(sec&&sec.q?sec.q:[]);
   var q=qs[i]; d.checks[q]=!d.checks[q]; save(); render();
+}
+function copyRaw(id){
+  var d=S.deals.filter(function(x){return x.id===id;})[0];
+  var t=document.createElement('textarea'); t.value=d.raw||''; document.body.appendChild(t); t.select();
+  try{document.execCommand('copy');toast('원문을 복사했습니다');}catch(e){toast('복사에 실패했습니다');}
+  t.remove();
 }
 function saveMemo(id){
   var d=S.deals.filter(function(x){return x.id===id;})[0];

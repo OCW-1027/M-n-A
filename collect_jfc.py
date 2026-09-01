@@ -20,7 +20,7 @@ Deal Radar 가져오기용 JSON으로 변환합니다. 공공기관 공개 데�
 금액 단위는 Deal Radar와 동일하게 万円(만엔) 정수입니다.
 """
 
-import argparse, csv, io, json, os, re, sys, urllib.request
+import argparse, csv, io, json, os, re, sys, urllib.parse, urllib.request
 from datetime import date
 
 CSV_URL = "https://www.jfc.go.jp/n/finance/jigyosyokei/matching/search/companies.csv"
@@ -175,7 +175,8 @@ def convert(row):
         "emp": emp(row.get("従業員数", "")),
         "reason": (row.get("譲渡理由") or "").strip().replace("-", "") or "미확인",
         "hold": 5,
-        "url": "https://www.jfc.go.jp/n/finance/jigyosyokei/matching/search/",
+        "url": ("https://www.jfc.go.jp/n/finance/jigyosyokei/matching/search/?prefecture="
+                + urllib.parse.quote((row.get("都道府県") or "").strip())),
         "ownerDep": "", "exitPath": "", "explain": "", "cap": "",
         "flags": [],
         "_years": years(row.get("業歴", "")),
@@ -190,15 +191,39 @@ def convert(row):
         d["netAssets"] = None
     if d["_deficit"]:
         d["flags"].append("2년 연속 적자")
-    body = "\n".join(filter(None, [
-        row.get("事業内容", "").replace("\\r\\n", "\n"),
-        row.get("商品・サービスの特徴", "").replace("\\r\\n", "\n"),
-        "譲渡対象: " + (row.get("主な譲渡対象資産") or "-"),
-        "引継ぎ協力: " + (row.get("引き継ぎ協力") or "-"),
-        "業歴: " + (row.get("業歴") or "-") + " / 従業員: " + (row.get("従業員数") or "-"),
-        "掲載: " + (row.get("掲載日") or "-") + " 更新: " + (row.get("更新日") or "-"),
-    ]))
-    d["memo"] = body[:900]
+    def g(k):
+        return (row.get(k) or "").replace("\\r\\n", "\n").replace("\\n", "\n").strip()
+
+    raw = "\n".join([
+        "【" + g("タイトル") + "】",
+        "案件ID: " + g("ＩＤ") + "   " + g("交渉フラグ"),
+        "業種: " + g("業種") + " / " + g("都道府県") + " / " + g("法人個人"),
+        "業歴: " + g("業歴") + " / 従業員数: " + g("従業員数"),
+        "",
+        "売上: " + g("売上"),
+        "経常利益: " + g("経常利益"),
+        "純資産: " + g("純資産※法人企業のみ"),
+        "借入金額: " + g("借入金額※法人企業のみ"),
+        "譲渡金額: " + g("譲渡金額"),
+        "譲渡スキーム: " + g("譲渡スキーム"),
+        "主な譲渡対象資産: " + g("主な譲渡対象資産"),
+        "交渉対象: " + g("交渉対象"),
+        "",
+        "【事業内容】",
+        g("事業内容"),
+        "",
+        "【商品・サービスの特徴】",
+        g("商品・サービスの特徴"),
+        "",
+        "【譲渡理由】 " + g("譲渡理由"),
+        "【引き継ぎ協力】 " + g("引き継ぎ協力"),
+        "【その他】 " + g("その他"),
+        "",
+        "掲載日 " + g("掲載日") + " / 更新日 " + g("更新日"),
+        "出典: 日本政策金融公庫 事業承継マッチング支援 公開データ",
+    ])
+    d["raw"] = re.sub(r"\n{3,}", "\n\n", raw)
+    d["memo"] = ""
     return d
 
 
