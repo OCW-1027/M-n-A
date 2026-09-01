@@ -1,0 +1,37 @@
+name: JFC 안건 수집
+
+on:
+  schedule:
+    - cron: '0 23 * * *'      # UTC 23:00 = 일본시간 08:00
+  workflow_dispatch:           # Actions 탭에서 수동 실행
+
+permissions:
+  contents: write              # seen.json 커밋에 필요
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 수집 실행
+        run: python3 collect_jfc.py --min-rev 5000 --min-profit 300
+
+      - name: 결과 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: jfc-import-${{ github.run_number }}
+          path: jfc_import_*.json
+          retention-days: 30
+
+      - name: seen.json 갱신
+        run: |
+          git config user.name  "deal-radar"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add seen.json
+          git diff --staged --quiet || git commit -m "seen 갱신 $(date +%Y-%m-%d)"
+          git push
