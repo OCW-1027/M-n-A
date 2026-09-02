@@ -631,7 +631,7 @@ function vIntake(){
   var tab=function(k,l){return '<button class="'+(IMODE===k?'primary':'ghost')+'" onclick="IMODE=\''+k+'\';render();pushView()">'+l+'</button>';};
   var h='<div class="head"><div><h2>안건 입력</h2>'+
    '<p>플랫폼의 검색 결과 목록을 통째로 복사해 붙여넣으면 여러 건을 한 번에 등록합니다. 매출·이익·희망가·지역·양도형태를 자동으로 뽑아내고, 이미 등록된 안건은 중복으로 표시합니다.</p></div>'+
-   '<div class="row">'+tab('single','한 건씩')+tab('bulk','목록 일괄')+tab('route','수집 루트')+tab('help','가져오는 법')+'</div></div>';
+   '<div class="row">'+tab('single','한 건씩')+tab('bulk','목록 일괄')+tab('route','수집 루트')+tab('help','로그인 수집')+'</div></div>';
   if(IMODE==='route')return h+vRoute();
   if(IMODE==='help')return h+vHelp();
   if(IMODE==='bulk')return h+
@@ -651,18 +651,22 @@ function vIntake(){
    '<button class="ghost" onclick="newBlank()">빈 양식으로 직접 입력</button></div></div>'+
    '<div id="pv"></div>';
 }
-var BM = "javascript:(function(){var t=document.body.innerText;var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();document.execCommand('copy');a.remove();alert('페이지 본문을 복사했습니다. Deal Radar에 붙여넣으세요. ('+t.length+'자)');})()";
+var BM = "javascript:(function(){var s=document.createElement('script');s.src='https://ocw-1027.github.io/M-n-A/grab.js?t='+Date.now();document.body.appendChild(s);})()";
 function vHelp(){
-  return '<div class="panel"><div class="sect" style="margin-top:0">가장 빠른 방법</div>'+
-  '<div class="note">플랫폼에서 검색 조건을 걸고 결과 목록을 띄운 뒤, 페이지 전체를 선택(Ctrl+A)해 복사하고 위 <b>목록 일괄</b> 탭에 붙여넣으십시오. 20~30건이 한 번에 들어옵니다.</div>'+
-  '<div class="sect">북마클릿 — 복사를 한 번에</div>'+
-  '<p style="font-size:12.5px;color:var(--ink-2);max-width:74ch">아래 코드를 브라우저 북마크로 등록해두면, 안건 페이지에서 북마크를 한 번 누르는 것만으로 본문 전체가 클립보드에 복사됩니다. 페이지를 직접 열어 읽는 것과 같은 동작이라 플랫폼 규약에 걸리지 않습니다.</p>'+
-  '<div class="row"><textarea id="bmk" rows="3" style="font-family:ui-monospace,monospace;font-size:11.5px">'+esc(BM)+'</textarea></div>'+
-  '<div class="row" style="margin-top:9px"><button onclick="copyBM()">북마클릿 코드 복사</button></div>'+
+  return '<div class="panel"><div class="sect" style="margin-top:0">로그인 상태에서 안건 담기 (권장)</div>'+
+  '<div class="note">BATONZ·TRANBI는 회원 로그인 뒤에 재무 정보가 나옵니다. 아래 북마클릿을 브라우저 북마크로 등록해두면, <b>로그인한 채로 목록 페이지에서 버튼 한 번</b> 누르는 것만으로 화면에 표시된 안건이 구조화되어 담깁니다. 페이지를 넘기며 계속 누르면 쌓이고, [JSON 저장]을 누르면 파일로 내려받습니다.</div>'+
+  '<div style="margin-top:12px"><label class="f">북마클릿 코드</label>'+
+  '<textarea id="bmk" rows="3" style="font-family:ui-monospace,monospace;font-size:11.5px">'+esc(BM)+'</textarea></div>'+
+  '<div class="row" style="margin-top:9px"><button class="primary" onclick="copyBM()">코드 복사</button></div>'+
   '<div class="sect">등록 방법</div>'+
-  '<p style="font-size:12.5px;color:var(--ink-2);max-width:74ch">브라우저에서 북마크 추가 → 이름은 자유롭게(예: 안건 복사) → URL 칸에 위 코드를 붙여넣고 저장. 안건 페이지에서 그 북마크를 누르면 됩니다.</p>'+
-  '<div class="sect">자동 수집이 안 되는 이유</div>'+
-  '<p style="font-size:12.5px;color:var(--ink-2);max-width:74ch">브라우저는 로컬 파일이 외부 사이트에 접속하는 것을 보안 정책으로 차단합니다. 우회 방법은 없습니다. 또한 주요 플랫폼은 이용규약에서 자동 수집을 금지하고 있어, 계정 정지 위험을 감수할 만한 실익이 없습니다. 공개 데이터(JFC 사업승계 DB, gBizINFO, 官報 결산공고)는 규약상 자동 수집이 가능하므로, 이건 별도의 수집 스크립트로 만들어 JSON으로 넣는 방식이 맞습니다.</p></div>';
+  '<p style="font-size:12.5px;color:var(--ink-2);max-width:76ch">브라우저에서 북마크바를 켜고(Ctrl+Shift+B) → 빈 곳 우클릭 → 페이지 추가 → 이름은 <span class="num">안건 담기</span>, URL 칸에 위 코드를 붙여넣고 저장합니다.</p>'+
+  '<div class="sect">쓰는 순서</div>'+
+  '<p style="font-size:12.5px;color:var(--ink-2);max-width:76ch">① BATONZ 또는 TRANBI에 로그인 → ② 검색 조건을 걸고 목록을 띄움 → ③ 북마크 [안건 담기] 클릭 → 오른쪽 아래에 「이 페이지에서 30건 추가」가 뜸 → ④ 다음 페이지로 넘겨 다시 클릭 → ⑤ 다 모았으면 [JSON 저장] → ⑥ 여기 좌측 [파일 불러오기]</p>'+
+  '<div class="note" style="margin-top:12px">이 북마클릿은 스스로 페이지를 넘기거나 다른 주소를 부르지 않습니다. 지금 화면에 떠 있는 내용만 읽습니다. 아이디·비밀번호를 다루지 않으며, 담은 내용은 이 브라우저 밖으로 나가지 않습니다.</div>'+
+  '<div class="sect">붙여넣기 방식 (북마클릿이 안 될 때)</div>'+
+  '<p style="font-size:12.5px;color:var(--ink-2);max-width:76ch">목록 페이지를 Ctrl+A로 전체 선택해 복사하고 <b>목록 일괄</b> 탭에 붙여넣어도 됩니다. 구조화 정확도는 북마클릿 쪽이 높습니다.</p>'+
+  '<div class="sect">자동 수집 범위</div>'+
+  '<p style="font-size:12.5px;color:var(--ink-2);max-width:76ch">M&Aキャピタルパートナーズ·日本M&Aセンター·ストライク·BATONZ·TRANBI의 <b>비로그인 공개 목록</b>과 JFC 공개 데이터는 매일 아침 자동 수집됩니다. 북마클릿은 그 위에 <b>로그인해야 보이는 재무 정보</b>를 덧붙이는 용도입니다.</p></div>';
 }
 function copyBM(){var t=document.getElementById('bmk');t.select();try{document.execCommand('copy');toast('복사했습니다');}catch(e){toast('직접 선택해 복사해 주세요');}}
 function doBulk(){
