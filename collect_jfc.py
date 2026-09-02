@@ -145,6 +145,16 @@ def years(s):
     return int(n[0]) if n else None
 
 
+def norm_date(s):
+    """2025/10/17, 2026-8-14, 2025年3月17日 → 2025-10-17"""
+    if not s:
+        return ""
+    m = re.search(r"(\d{4})\s*[/\-年.]\s*(\d{1,2})\s*[/\-月.]\s*(\d{1,2})", str(s))
+    if not m:
+        return ""
+    return "%04d-%02d-%02d" % (int(m.group(1)), int(m.group(2)), int(m.group(3)))
+
+
 def industry_of(row):
     blob = " ".join([row.get("タイトル", ""), row.get("事業内容", ""),
                      row.get("商品・サービスの特徴", "")])
@@ -181,8 +191,8 @@ def convert(row):
         "flags": [],
         "_years": years(row.get("業歴", "")),
         "_corp": (row.get("法人個人") or "").strip(),
-        "_posted": (row.get("掲載日") or "").strip(),
-        "_updated": (row.get("更新日") or "").strip(),
+        "posted": norm_date(row.get("掲載日")),
+        "updated": norm_date(row.get("更新日")),
         "_open": "交渉可" in (row.get("交渉フラグ") or ""),
         "_deficit": (row.get("経常利益") or "").strip() == "赤字",
     }

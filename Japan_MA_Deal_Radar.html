@@ -288,6 +288,11 @@ function fmt(v){
   if(v>=10000){var o=v/10000;return (Math.round(o*100)/100)+'억엔';}
   return v.toLocaleString()+'만엔';
 }
+function fmtPlain(v){
+  if(v==null)return '—';
+  if(v>=10000)return (Math.round(v/100)/100)+'억엔';
+  return v.toLocaleString()+'만엔';
+}
 function fmtP(v,d){if(v==null)return '—';return (Math.round(v*(d?100:10))/(d?100:10))+'배';}
 function earn(x){return x.ebitda!=null?x.ebitda:x.op;}
 function askOP(x){var e=earn(x); if(!x.ask||!e||e<=0)return null;
@@ -303,6 +308,19 @@ function hasKill(x){return (x.flags||[]).some(function(f){return KILL.indexOf(f)
 function hasWarn(x){return (x.flags||[]).some(function(f){return WARN.indexOf(f)>=0;});}
 
 /* ─────────── 스코어 ─────────── */
+function daysOn(d){
+  var base=d.posted||d.updated; if(!base)return null;
+  var t=Date.parse(base+'T00:00:00'); if(isNaN(t))return null;
+  var n=Math.floor((Date.now()-t)/86400000);
+  return n<0?0:n;
+}
+function daysBadge(d){
+  var n=daysOn(d);
+  if(n==null)return '<span style="color:var(--ink-3)">—</span>';
+  var c = n<=14?'b-mi' : n<=90?'b-cy' : n<=365?'b-gy' : 'b-am';
+  var lab = n<=14?'신착 '+n+'일' : n<730?n+'일' : Math.floor(n/365)+'년+';
+  return '<span class="b '+c+'">'+lab+'</span>';
+}
 var _SC={};
 function score(x){
   var key=x.id!=null?x.id+'|'+(x.ask||'')+'|'+(x.op||'')+'|'+(x.ebitda||'')+'|'+(x.cash||'')+'|'+(x.debt||'')+'|'+(x.netAssets||'')+'|'+(x.ownerDep||'')+'|'+(x.exitPath||'')+'|'+(x.explain||'')+'|'+(x.cap||'')+'|'+((x.flags||[]).join(',')):null;
@@ -832,7 +850,7 @@ function vPipe(){
 }
 
 /* 목록 */
-var FILT={ind:'',pref:'',src:'',track:'',status:'',flag:'',q:'',onlyRated:false};
+var FILT={ind:'',pref:'',src:'',track:'',status:'',flag:'',q:'',onlyRated:false,age:''};
 function filtered(){
   var q=(FILT.q||'').toLowerCase();
   return S.deals.filter(function(d){
@@ -845,6 +863,13 @@ function filtered(){
     if(FILT.flag==='warn'&&!hasWarn(d))return false;
     if(FILT.flag==='clean'&&(hasKill(d)||hasWarn(d)))return false;
     if(FILT.onlyRated&&!askOP(d))return false;
+    if(FILT.age){
+      var n=daysOn(d);
+      if(FILT.age==='new7'&&(n==null||n>7))return false;
+      if(FILT.age==='new30'&&(n==null||n>30))return false;
+      if(FILT.age==='stale365'&&(n==null||n<365))return false;
+      if(FILT.age==='cut'&&(d.flags||[]).indexOf('가격 인하')<0)return false;
+    }
     if(q){
       var hay=((d.name||'')+' '+(d.industry||'')+' '+(d.pref||'')+' '+(d.listingId||'')+' '+(d.raw||'').slice(0,400)).toLowerCase();
       if(hay.indexOf(q)<0)return false;
@@ -865,7 +890,7 @@ function fsel(key,label,opts,cur){
 }
 function setFilt(k,v){FILT[k]=v;SCROLLPOS[stateKey()]=0;render();pushView(true);}
 /* 필터는 replaceState 로만 기록해 뒤로가기가 필터 변경 하나하나를 되짚지 않게 한다 */
-function clearFilt(){FILT={ind:'',pref:'',src:'',track:'',status:'',flag:'',q:'',onlyRated:false};render();pushView(true);}
+function clearFilt(){FILT={ind:'',pref:'',src:'',track:'',status:'',flag:'',q:'',onlyRated:false,age:''};render();pushView(true);}
 function setQ(v){FILT.q=v;render();pushView(true);var el=document.getElementById('fq');if(el){el.focus();el.setSelectionRange(v.length,v.length);}}
 
 function vList(){
@@ -873,6 +898,7 @@ function vList(){
   ds.sort(function(a,b){
     var k=SORT.k,va,vb;
     if(k==='score'){va=score(a).pct*(score(a).fill<50?0:1);vb=score(b).pct*(score(b).fill<50?0:1);}
+    else if(k==='days'){va=daysOn(a);vb=daysOn(b);}
     else if(k==='ratio'){va=askOP(a)||999;vb=askOP(b)||999;}
     else {va=a[k];vb=b[k];}
     if(va==null)va=SORT.d<0?-Infinity:Infinity; if(vb==null)vb=SORT.d<0?-Infinity:Infinity;
@@ -889,9 +915,12 @@ function vList(){
     fsel('pref','지역',uniq(function(d){return d.pref;}),FILT.pref)+
     fsel('src','소스',uniq(function(d){return d.source;}),FILT.src)+
     fsel('status','단계',uniq(function(d){return d.status;}),FILT.status)+
-   '</div><div class="grid4" style="margin-top:12px">'+
+   '</div><div class="grid3" style="margin-top:12px">'+
     '<div><label class="f">트랙</label><select onchange="setFilt(\'track\',this.value)">'+
       ['','메인','볼트온','미정'].map(function(t){return '<option value="'+t+'"'+(FILT.track===t?' selected':'')+'>'+(t||'전체')+'</option>';}).join('')+'</select></div>'+
+    '<div><label class="f">기간</label><select onchange="setFilt(\'age\',this.value)">'+
+      [['','전체'],['new7','최근 7일 신착'],['new30','최근 30일'],['stale365','1년 이상 체류'],['cut','가격 인하']].map(function(o){
+        return '<option value="'+o[0]+'"'+(FILT.age===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select></div>'+
     '<div><label class="f">플래그</label><select onchange="setFilt(\'flag\',this.value)">'+
       [['','전체'],['clean','플래그 없음'],['warn','주의'],['kill','즉시 탈락']].map(function(o){
         return '<option value="'+o[0]+'"'+(FILT.flag===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select></div>'+
@@ -907,18 +936,19 @@ function vList(){
    '</div></div>';
 
   h+='<div class="panel"><table><thead><tr>'+
-   [['name','안건'],['industry','업종'],['pref','지역'],['ask','희망가'],['ratio','배수'],['track','트랙'],['score','점수'],['status','상태']]
+   [['name','안건'],['industry','업종'],['pref','지역'],['ask','희망가'],['ratio','배수'],['days','경과'],['score','점수'],['status','상태']]
    .map(function(c){return '<th'+(['ask','ratio','score'].indexOf(c[0])>=0?' class="r"':'')+' onclick="sortBy(\''+c[0]+'\')">'+c[1]+(SORT.k===c[0]?(SORT.d>0?' ↑':' ↓'):'')+'</th>';}).join('')+
    '</tr></thead><tbody>';
   h+=ds.slice(0,400).map(function(d){
     var sc=score(d),g=grade(sc.pct,sc.fill),r=askOP(d);
     return '<tr onclick="openDeal('+d.id+')"><td>'+esc(d.name)+
+      ((d.flags||[]).indexOf('가격 인하')>=0?' <span class="b b-mi">인하</span>':'')+
       (hasKill(d)?' <span class="b b-ro">킬</span>':hasWarn(d)?' <span class="b b-am">주의</span>':'')+'</td>'+
       '<td style="color:var(--ink-2);font-size:12.5px">'+esc(d.industry||'—')+'</td>'+
       '<td style="color:var(--ink-2);font-size:12.5px">'+esc(d.pref||'—')+'</td>'+
       '<td class="r num">'+fmt(d.ask)+'</td>'+
       '<td class="r num">'+(r?fmtP(r,1):'<span style="color:var(--ink-3)">—</span>')+'</td>'+
-      '<td><span class="b '+(track(d)==='메인'?'b-cy':'b-gy')+'">'+track(d)+'</span></td>'+
+      '<td>'+daysBadge(d)+'</td>'+
       '<td class="r"><span class="b '+g.c+'">'+g.g+'</span> <span class="num" style="color:var(--ink-2)">'+(sc.fill<50?'':sc.pct)+'</span></td>'+
       '<td style="font-size:12.5px;color:var(--ink-2)">'+esc(d.status)+'</td></tr>';
   }).join('');
@@ -961,6 +991,11 @@ function vDeal(){
     '<dt>실질 EV</dt><dd class="num">'+(ev==null?'<span style="color:var(--ink-3)">차입·현금 미확인</span>':fmt(ev))+'</dd>'+
     '<dt>종업원</dt><dd class="num">'+(d.emp==null?'—':d.emp+'명')+'</dd>'+
     '<dt>안건번호</dt><dd class="num">'+(d.listingId?esc(d.listingId):'<span style="color:var(--ink-3)">—</span>')+'</dd>'+
+    '<dt>게재일</dt><dd class="num">'+(d.posted?esc(d.posted):'<span style="color:var(--ink-3)">—</span>')+'</dd>'+
+    '<dt>갱신일</dt><dd class="num">'+(d.updated?esc(d.updated):'<span style="color:var(--ink-3)">—</span>')+'</dd>'+
+    '<dt>시장 체류</dt><dd>'+daysBadge(d)+'</dd>'+
+    (d.priceHist&&d.priceHist.length?'<dt>가격 이력</dt><dd class="num" style="color:var(--amber)">'+
+      d.priceHist.map(function(h){return fmtPlain(h.from)+' → '+fmtPlain(h.to);}).join('<br>')+'</dd>':'')+
     '<dt>트랙</dt><dd><span class="b '+(track(d)==='메인'?'b-cy':'b-gy')+'">'+track(d)+'</span></dd>'+
     '<dt>보유 목표</dt><dd class="num">'+(d.hold||5)+'년</dd>'+
     '</dl></div>';
@@ -1082,7 +1117,7 @@ function showIndustry(k){
   clearFiltSilent(); FILT.ind=k; SORT={k:'ratio',d:1};
   saveScroll(); VIEW='list'; CUR=null; render(); pushView();
 }
-function clearFiltSilent(){FILT={ind:'',pref:'',src:'',track:'',status:'',flag:'',q:'',onlyRated:false};}
+function clearFiltSilent(){FILT={ind:'',pref:'',src:'',track:'',status:'',flag:'',q:'',onlyRated:false,age:''};}
 function editSector(k){
   var s=S.sectors[k]||{listed:'',band:'',lic:'',people:'',hidden:'',q:[]};
   document.getElementById('sedit').innerHTML='<div class="sect">'+(k?'업종 수정':'업종 추가')+'</div><div class="panel">'+
@@ -1132,6 +1167,18 @@ function vStats(){
       '<span class="num" style="color:var(--ink-3);width:34px;text-align:right">'+a.length+'건</span></div>';
   });
   h+='</div>';
+
+  /* 시장 체류 분포 */
+  var buckets=[['7일 이내 신착',0,7],['8~30일',8,30],['31~90일',31,90],['91~365일',91,365],['1년 초과',366,99999]];
+  var bc=buckets.map(function(b){return S.deals.filter(function(d){var n=daysOn(d);return n!=null&&n>=b[1]&&n<=b[2];}).length;});
+  var bmax=Math.max.apply(null,bc.concat([1]));
+  var noDate=S.deals.filter(function(d){return daysOn(d)==null;}).length;
+  h+='<div class="sect">시장 체류 기간 <span style="color:var(--ink-3);font-size:11.5px">오래 남아 있을수록 가격 협상 여지가 큽니다</span></div><div class="panel">';
+  buckets.forEach(function(b,i){
+    h+='<div class="hbar"><span class="t">'+b[0]+'</span><span class="g"><i style="width:'+(bc[i]/bmax*100)+'%"></i></span>'+
+       '<span class="num" style="width:54px;text-align:right">'+bc[i]+'건</span></div>';
+  });
+  h+='<div style="font-size:11.5px;color:var(--ink-3);margin-top:8px">게재일 미공개 '+noDate+'건은 제외</div></div>';
 
   /* 소스별 */
   var bs={};ds.forEach(function(d){bs[d.source||'미분류']=(bs[d.source||'미분류']||0)+1;});
@@ -1188,16 +1235,22 @@ var FEEDS=['data/latest_platforms.json','data/latest_jfc.json'];
 function syncNow(silent){
   var btn=document.getElementById('syncbtn');
   if(btn){btn.disabled=true;btn.textContent='확인 중…';}
-  var added=0, skipped=0, newsec=0, done=0, stamp='', okFeeds=0, failFeeds=0;
-  var have={},haveName={};
-  S.deals.forEach(function(d){ if(d.listingId)have[d.source+':'+d.listingId]=1; haveName[d.name]=1; });
+  var added=0, skipped=0, newsec=0, done=0, stamp='', okFeeds=0, failFeeds=0, changed=0, touched=0;
+  var have={},haveName={},byKey={},byName={};
+  S.deals.forEach(function(d){
+    if(d.listingId){have[d.source+':'+d.listingId]=1;byKey[d.source+':'+d.listingId]=d;}
+    haveName[d.name]=1; byName[d.name]=d;
+  });
   function finish(){
-    if(added||newsec)save();
+    if(added||newsec||changed||touched)save();
     if(btn){btn.disabled=false;btn.textContent='새 안건 확인';}
     /* 수신에 실제로 성공했을 때만 오늘 확인한 것으로 기록한다.
        파일이 아직 없어서 실패한 날을 '확인 완료'로 남기면 영영 다시 시도하지 않는다. */
     if(okFeeds){ try{localStorage.setItem('ma_radar_lastsync',today());}catch(e){} }
-    if(added){ toast('신규 '+added+'건을 받았습니다'); go('list'); }
+    if(added||changed){
+      toast((added?'신규 '+added+'건':'')+(added&&changed?' · ':'')+(changed?'가격 변동 '+changed+'건':'')+'을 받았습니다');
+      go('list');
+    }
     else if(!silent){
       toast(okFeeds ? '새 안건이 없습니다 (중복 '+skipped+'건 확인)'
                     : '수집 파일을 찾지 못했습니다 — 워크플로가 돌았는지 확인해 주십시오');
@@ -1211,7 +1264,27 @@ function syncNow(silent){
         if(o.collected&&o.collected>stamp)stamp=o.collected;
         o.deals.forEach(function(x){
           var key=(x.source||'')+':'+(x.listingId||'');
-          if((x.listingId&&have[key])||haveName[x.name]){skipped++;return;}
+          if((x.listingId&&have[key])||haveName[x.name]){
+            skipped++;
+            var cur=byKey[key]||byName[x.name];
+            if(cur){
+              /* 가격·갱신일이 바뀌었으면 갱신하고 이력을 남긴다 */
+              if(x.ask!=null&&cur.ask!=null&&x.ask!==cur.ask){
+                cur.priceHist=cur.priceHist||[];
+                cur.priceHist.push({t:today(),from:cur.ask,to:x.ask});
+                var down=x.ask<cur.ask;
+                cur.logs.push({t:today(),m:'희망가 '+(down?'인하':'인상')+' '+fmtPlain(cur.ask)+' → '+fmtPlain(x.ask)});
+                cur.ask=x.ask;
+                if(down&&(cur.flags||[]).indexOf('가격 인하')<0){cur.flags=cur.flags||[];cur.flags.push('가격 인하');}
+                changed++;
+              }
+              if(x.updated&&x.updated!==cur.updated){cur.updated=x.updated;touched++;}
+              if(x.posted&&!cur.posted)cur.posted=x.posted;
+              if(x.url&&!cur.url)cur.url=x.url;
+              if(x.raw&&!cur.raw)cur.raw=x.raw;
+            }
+            return;
+          }
           var d={}; for(var k in x){ if(k.charAt(0)!=='_')d[k]=x[k]; }
           d.id=++S.seq; d.status='신규'; d.created=today(); d.checks={};
           d.flags=d.flags||[]; d.hold=d.hold||5;

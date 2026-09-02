@@ -223,6 +223,15 @@ SPLIT = {"ma-cp": blocks_macp, "nihon-ma": blocks_nihonma, "strike": blocks_stri
          "batonz": blocks_batonz, "tranbi": blocks_tranbi}
 
 
+def norm_date(s):
+    if not s:
+        return ""
+    m = re.search(r"(\d{4})\s*[/\-年.]\s*(\d{1,2})\s*[/\-月.]\s*(\d{1,2})", str(s))
+    if not m:
+        return ""
+    return "%04d-%02d-%02d" % (int(m.group(1)), int(m.group(2)), int(m.group(3)))
+
+
 def industry_of(t):
     for kw, ind in KEYWORDS:
         if kw in t:
@@ -352,6 +361,11 @@ def parse_block(rawhtml, site, cfg):
         d["flags"].append("채무초과")
     if re.search(r"\b1円\b|一円", z2h(t)):
         d["flags"].append("1엔 매각")
+
+    mp = re.search(r"(?:公開日?|掲載日?)\s*[：:]?\s*([\d]{4}[/\-年.][\d]{1,2}[/\-月.][\d]{1,2})", t)
+    mu = re.search(r"(?:更新日?|最終更新)\s*[：:]?\s*([\d]{4}[/\-年.][\d]{1,2}[/\-月.][\d]{1,2})", t)
+    d["posted"] = norm_date(mp.group(1)) if mp else ""
+    d["updated"] = norm_date(mu.group(1)) if mu else ""
 
     d["name"] = title_of(t, site)
     d["industry"] = industry_of(t)

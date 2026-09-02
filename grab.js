@@ -139,6 +139,16 @@
       raw: t.slice(0, 2000)
     };
     var em = z2h(t).match(/従業員[^0-9]{0,10}([0-9]+)/); if (em) d.emp = parseInt(em[1]);
+    function nd(x) {
+      if (!x) return '';
+      var m = String(x).match(/(\d{4})\s*[\/\-年.]\s*(\d{1,2})\s*[\/\-月.]\s*(\d{1,2})/);
+      if (!m) return '';
+      return m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2);
+    }
+    var mp = t.match(/(?:公開日?|掲載日?)\s*[：:]?\s*(\d{4}[\/\-年.]\d{1,2}[\/\-月.]\d{1,2})/);
+    var mu = t.match(/(?:更新日?|最終更新)\s*[：:]?\s*(\d{4}[\/\-年.]\d{1,2}[\/\-月.]\d{1,2})/);
+    d.posted = mp ? nd(mp[1]) : '';
+    d.updated = mu ? nd(mu[1]) : '';
     for (var i = 0; i < PREFS.length; i++) if (t.indexOf(PREFS[i]) >= 0) { d.pref = PREFS[i]; break; }
     if (!d.pref) for (var j = 0; j < REGIONS.length; j++) if (t.indexOf(REGIONS[j]) >= 0) { d.pref = REGIONS[j]; break; }
     d.dealType = t.indexOf('事業譲渡') >= 0 ? '事業譲渡' : (t.indexOf('株式譲渡') >= 0 || t.indexOf('会社譲渡') >= 0 ? '株式譲渡' : '');
